@@ -3,7 +3,7 @@
  * All calls go to the real backend (ClickHouse-backed).
  */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
 /** Generic fetch helper */
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

@@ -45,12 +45,14 @@ function createPinIcon(L: any, block: BlockMapEntry, isUser: boolean) {
 interface Props {
   blocks: BlockMapEntry[];
   userPostalCode?: string;
+  selectedPostalCode?: string;
   onBlockSelect?: (block: BlockMapEntry) => void;
 }
 
-export default function OneMapLeaflet({ blocks, userPostalCode, onBlockSelect }: Props) {
+export default function OneMapLeaflet({ blocks, userPostalCode, selectedPostalCode, onBlockSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+  const markersRef = useRef<Record<string, any>>({});
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -61,9 +63,14 @@ export default function OneMapLeaflet({ blocks, userPostalCode, onBlockSelect }:
       if (!containerRef.current) return;
       if ((containerRef.current as any)._leaflet_id) return;
 
+      const preferredBlock = blocks.find((b) => b.postal_code === userPostalCode) || blocks[0];
+      const mapCenter: [number, number] = preferredBlock
+        ? [Number(preferredBlock.lat), Number(preferredBlock.lng)]
+        : [1.4285, 103.8348];
+
       const map = L.map(containerRef.current, {
-        center: [1.4285, 103.8348],
-        zoom: 16,
+        center: mapCenter,
+        zoom: 17,
         zoomControl: true,
       });
 
@@ -74,21 +81,27 @@ export default function OneMapLeaflet({ blocks, userPostalCode, onBlockSelect }:
       }).addTo(map);
 
       blocks.forEach((block) => {
-        const coords = BLOCK_COORDS[block.postal_code];
+        const coords = Number.isFinite(Number(block.lat)) && Number.isFinite(Number(block.lng))
+          ? [Number(block.lat), Number(block.lng)] as [number, number]
+          : BLOCK_COORDS[block.postal_code];
         if (!coords) return;
         const isUser = block.postal_code === userPostalCode;
 
         const marker = L.marker(coords, {
           icon: createPinIcon(L, block, isUser),
         }).addTo(map);
+        markersRef.current[block.postal_code] = marker;
 
-        marker.bindPopup(`
+        marker.bindPopup(
+          `
           <div style="min-width:120px;font-family:sans-serif;line-height:1.6">
             <p style="font-weight:700;margin:0 0 2px">${block.postal_code}${isUser ? " 📍 You" : ""}</p>
             <p style="color:#16a34a;font-weight:600;margin:0 0 1px">-${block.reduction_pct}% vs avg</p>
             <p style="color:#6b7280;font-size:11px;margin:0">${block.avg_kwh.toFixed(2)} kWh/day · Rank #${block.rank}</p>
           </div>
-        `);
+        `,
+          { autoPan: false }
+        );
 
         if (onBlockSelect) {
           marker.on("click", () => onBlockSelect(block));
@@ -101,9 +114,20 @@ export default function OneMapLeaflet({ blocks, userPostalCode, onBlockSelect }:
     return () => {
       mapRef.current?.remove();
       mapRef.current = null;
+      markersRef.current = {};
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!mapRef.current || !selectedPostalCode) return;
+    const marker = markersRef.current[selectedPostalCode];
+    if (!marker) return;
+
+    const ll = marker.getLatLng();
+    mapRef.current.setView(ll, Math.max(mapRef.current.getZoom(), 16), { animate: true });
+    marker.openPopup();
+  }, [selectedPostalCode]);
 
   return (
     <div
