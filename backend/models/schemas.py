@@ -112,11 +112,19 @@ class Challenge(BaseModel):
     requires_photo: bool = False
 
 
+class ChallengeHistoryEntry(BaseModel):
+    challenge_id: str
+    title: str
+    points_earned: int
+    completed_at: str
+
+
 class ChallengesResponse(BaseModel):
     user_id: str
     total_points: int
     weekly_points: int
     challenges: list[Challenge]
+    completed_history: list[ChallengeHistoryEntry]
 
 
 class CompleteChallengeRequest(BaseModel):
