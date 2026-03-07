@@ -22,6 +22,9 @@ function createPinIcon(L: any, block: BlockMapEntry, isUser: boolean) {
   const bg = markerFill(block.reduction_pct);
   const border = isUser ? "#F59E0B" : "#2DB7A3";
   const size = 28;
+  const isTopThree = block.rank <= 3;
+  const iconFontSize = isTopThree ? 18 : 13;
+  const centerIcon = block.rank === 1 ? "🥇" : block.rank === 2 ? "🥈" : block.rank === 3 ? "🥉" : "🏠";
   return L.divIcon({
     html: `
       <div style="
@@ -33,7 +36,7 @@ function createPinIcon(L: any, block: BlockMapEntry, isUser: boolean) {
         box-shadow:0 2px 6px rgba(0,0,0,0.25);
         display:flex;align-items:center;justify-content:center;
       ">
-        <span style="transform:rotate(45deg);font-size:13px;line-height:1;display:block;">🏠</span>
+        <span style="transform:rotate(45deg);font-size:${iconFontSize}px;line-height:1;display:block;">${centerIcon}</span>
       </div>`,
     className: "",
     iconSize: [size, size],
@@ -91,12 +94,14 @@ export default function OneMapLeaflet({ blocks, userPostalCode, selectedPostalCo
           icon: createPinIcon(L, block, isUser),
         }).addTo(map);
         markersRef.current[block.postal_code] = marker;
+        const deltaSign = block.reduction_pct >= 0 ? "-" : "+";
+        const deltaValue = Math.abs(block.reduction_pct).toFixed(1);
 
         marker.bindPopup(
           `
           <div style="min-width:120px;font-family:sans-serif;line-height:1.6">
             <p style="font-weight:700;margin:0 0 2px">${block.postal_code}${isUser ? " 📍 You" : ""}</p>
-            <p style="color:#16a34a;font-weight:600;margin:0 0 1px">-${block.reduction_pct}% vs avg</p>
+            <p style="color:${block.reduction_pct >= 0 ? "#16a34a" : "#ef4444"};font-weight:600;margin:0 0 1px">${deltaSign}${deltaValue}% vs avg</p>
             <p style="color:#6b7280;font-size:11px;margin:0">${block.avg_kwh.toFixed(2)} kWh/day · Rank #${block.rank}</p>
           </div>
         `,

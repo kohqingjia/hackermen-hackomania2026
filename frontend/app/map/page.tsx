@@ -114,7 +114,7 @@ export default function MapPage() {
       {/* Header */}
       <div>
         <p className="text-xs text-sp-text-secondary uppercase tracking-wide">Map View</p>
-        <h1 className="text-xl font-bold text-sp-text mt-0.5">Yishun Energy Challenge</h1>
+        <h1 className="text-xl font-bold text-sp-text mt-0.5">Your District's Standings</h1>
         <p className="text-xs text-sp-text-secondary">Tap a block to see its stats</p>
       </div>
 
