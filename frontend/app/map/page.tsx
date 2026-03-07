@@ -149,7 +149,7 @@ export default function MapPage() {
                 block.rank === 3 ? "bg-orange-100 text-orange-700" :
                 "bg-gray-50 text-sp-text-secondary"
               )}>
-                {block.rank === 1 ? "🥇" : block.rank === 2 ? "🥈" : block.rank === 3 ? "🥉" : block.rank}
+                {block.rank === 1 ? "🥇" : block.rank === 2 ? "🥈" : block.rank === 3 ? "🥉" : "#" + block.rank}
               </span>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-sp-text">
