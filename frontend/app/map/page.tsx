@@ -39,6 +39,7 @@ export default function MapPage() {
   const [userPostalCode, setUserPostalCode] = useState("752339");
   const [mapData, setMapData] = useState<MapResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
   const [selected, setSelected] = useState<BlockMapEntry | null>(null);
   const hasLoadedRef = useRef(false);
 
@@ -50,15 +51,28 @@ export default function MapPage() {
     setUserPostalCode(bid);
 
     async function loadMapData() {
-      const applyData = (data: MapResponse) => {
-        setMapData(data);
-        setSelected(data.blocks.find((b) => b.postal_code === bid) || data.blocks[0] || null);
+      const withDistrictComparison = (blocks: BlockMapEntry[]): BlockMapEntry[] => {
+        if (!blocks.length) return blocks;
+        const districtAvg = blocks.reduce((sum, block) => sum + block.avg_kwh, 0) / blocks.length;
+        return blocks.map((block) => ({
+          ...block,
+          reduction_pct: districtAvg > 0
+            ? Number((((districtAvg - block.avg_kwh) / districtAvg) * 100).toFixed(1))
+            : 0,
+        }));
+      };
+
+      const applyData = (data: MapResponse, isFallback = false) => {
+        const blocks = withDistrictComparison(data.blocks);
+        setUsingFallback(isFallback);
+        setMapData({ ...data, blocks });
+        setSelected(blocks.find((b) => b.postal_code === bid) || blocks[0] || null);
       };
 
       try {
         const latest = await getMap("Yishun");
         if (latest.blocks?.length) {
-          applyData(latest);
+          applyData(latest, false);
           return;
         }
 
@@ -72,7 +86,7 @@ export default function MapPage() {
           try {
             const data = await getMap("Yishun", dateKey);
             if (data.blocks?.length) {
-              applyData(data);
+              applyData(data, false);
               return;
             }
           } catch (e) {
@@ -82,11 +96,11 @@ export default function MapPage() {
         }
 
         // No real data available — use static fallback blocks
-        applyData({ district: "Yishun", blocks: FALLBACK_BLOCKS });
+        applyData({ district: "Yishun", blocks: FALLBACK_BLOCKS }, true);
       } catch (e) {
         console.error("Map fetch failed", e);
         // Network / server error — still show fallback blocks
-        applyData({ district: "Yishun", blocks: FALLBACK_BLOCKS });
+        applyData({ district: "Yishun", blocks: FALLBACK_BLOCKS }, true);
       } finally {
         setLoading(false);
       }
@@ -104,7 +118,7 @@ export default function MapPage() {
         <p className="text-xs text-sp-text-secondary">Tap a block to see its stats</p>
       </div>
 
-      {!loading && mapData && mapData.blocks === FALLBACK_BLOCKS && (
+      {!loading && usingFallback && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Showing estimated block data. Live data will appear once available.
         </div>
