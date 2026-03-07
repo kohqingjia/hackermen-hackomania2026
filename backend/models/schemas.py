@@ -104,11 +104,24 @@ class LeaderboardEntry(BaseModel):
     weekly_change: float    # kwh change vs previous week
 
 
+class WeeklyTopBlock(BaseModel):
+    rank: int
+    block_id: str
+    avg_kwh: float
+
+
+class WeeklyTopThree(BaseModel):
+    week_start: str
+    winners: list[WeeklyTopBlock]
+    block_avg_kwh_by_block: dict[str, float]
+
+
 class LeaderboardResponse(BaseModel):
     week_start: str
     district: str
     district_avg_kwh: float  # average across the district for the week
     entries: list[LeaderboardEntry]
+    weekly_top3_history: list[WeeklyTopThree]
     resets_in_days: int
 
 
@@ -125,11 +138,19 @@ class Challenge(BaseModel):
     requires_photo: bool = False
 
 
+class ChallengeHistoryEntry(BaseModel):
+    challenge_id: str
+    title: str
+    points_earned: int
+    completed_at: str
+
+
 class ChallengesResponse(BaseModel):
     user_id: str
     total_points: int
     weekly_points: int
     challenges: list[Challenge]
+    completed_history: list[ChallengeHistoryEntry]
 
 
 class CompleteChallengeRequest(BaseModel):

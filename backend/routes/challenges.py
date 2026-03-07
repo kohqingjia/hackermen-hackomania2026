@@ -9,13 +9,13 @@ Challenge types:
   - "weekly"     weekly energy reduction challenge
 """
 
-import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
 from models.schemas import (
     ChallengesResponse,
     Challenge,
+    ChallengeHistoryEntry,
     CompleteChallengeRequest,
     CompleteChallengeResponse,
 )
@@ -70,34 +70,62 @@ CHALLENGE_CATALOGUE = [
 @router.get("", response_model=ChallengesResponse)
 def get_challenges(user_id: str = Query(...)):
     client = get_client()
+    today = date.today()
+    week_start = today - timedelta(days=6)
 
-    # Fetch completed challenge IDs for this user
-    completed_rows = client.query(
+    title_map = {c.challenge_id: c.title for c in CHALLENGE_CATALOGUE}
+
+    # Completions from past 7 days for history tab
+    history_rows = client.query(
         """
         SELECT challenge_id, completed_at, points_earned
         FROM user_challenges
         WHERE user_id = {uid:String}
+          AND toDate(completed_at) BETWEEN {ws:Date} AND {td:Date}
+        ORDER BY completed_at DESC
         """,
-        parameters={"uid": user_id},
+        parameters={"uid": user_id, "ws": week_start.isoformat(), "td": today.isoformat()},
     ).result_rows
+    history_entries = [
+        ChallengeHistoryEntry(
+            challenge_id=row[0],
+            title=title_map.get(row[0], row[0]),
+            points_earned=int(row[2]),
+            completed_at=str(row[1]),
+        )
+        for row in history_rows
+    ]
 
-    completed_map = {r[0]: r for r in completed_rows}
+    # Completed challenge IDs today (daily reset behavior)
+    today_rows = client.query(
+        """
+        SELECT challenge_id, max(completed_at) AS completed_at
+        FROM user_challenges
+        WHERE user_id = {uid:String}
+          AND toDate(completed_at) = {td:Date}
+        GROUP BY challenge_id
+        """,
+        parameters={"uid": user_id, "td": today.isoformat()},
+    ).result_rows
+    completed_today_map = {r[0]: r[1] for r in today_rows}
 
     # Auto-check CH002: is user below block avg today?
     auto_result = _check_auto_challenges(client, user_id)
 
     challenges = []
-    total_points = 0
-    weekly_points = 0
-    week_cutoff = date.today().isocalendar()
+    weekly_points = sum(int(row[2]) for row in history_rows)
+
+    total_points = client.query(
+        "SELECT sum(points_earned) FROM user_challenges WHERE user_id = {uid:String}",
+        parameters={"uid": user_id},
+    ).result_rows[0][0] or 0
 
     for ch in CHALLENGE_CATALOGUE:
         ch_copy = ch.model_copy()
 
-        if ch.challenge_id in completed_map:
+        if ch.challenge_id in completed_today_map:
             ch_copy.is_completed = True
-            ch_copy.completed_at = str(completed_map[ch.challenge_id][1])
-            total_points += completed_map[ch.challenge_id][2]
+            ch_copy.completed_at = str(completed_today_map[ch.challenge_id])
         elif ch.challenge_id == "CH002" and auto_result:
             # Auto-complete if user beats block
             ch_copy.is_completed = True
@@ -107,9 +135,10 @@ def get_challenges(user_id: str = Query(...)):
 
     return ChallengesResponse(
         user_id=user_id,
-        total_points=total_points,
+        total_points=int(total_points),
         weekly_points=weekly_points,
         challenges=challenges,
+        completed_history=history_entries,
     )
 
 
@@ -121,13 +150,21 @@ def complete_challenge(data: CompleteChallengeRequest):
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    # Check not already completed
+    # Check not already completed today (daily reset)
+    today = date.today().isoformat()
     existing = client.query(
-        "SELECT 1 FROM user_challenges WHERE user_id = {uid:String} AND challenge_id = {cid:String} LIMIT 1",
-        parameters={"uid": data.user_id, "cid": data.challenge_id},
+        """
+        SELECT 1
+        FROM user_challenges
+        WHERE user_id = {uid:String}
+          AND challenge_id = {cid:String}
+          AND toDate(completed_at) = {td:Date}
+        LIMIT 1
+        """,
+        parameters={"uid": data.user_id, "cid": data.challenge_id, "td": today},
     ).result_rows
     if existing:
-        raise HTTPException(status_code=400, detail="Challenge already completed")
+        raise HTTPException(status_code=400, detail="Challenge already completed today")
 
     client.insert(
         "user_challenges",

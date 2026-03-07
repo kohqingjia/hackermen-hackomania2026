@@ -96,11 +96,24 @@ export interface LeaderboardEntry {
   weekly_change: number;
 }
 
+export interface WeeklyTopBlock {
+  rank: number;
+  block_id: string;
+  avg_kwh: number;
+}
+
+export interface WeeklyTopThree {
+  week_start: string;
+  winners: WeeklyTopBlock[];
+  block_avg_kwh_by_block: Record<string, number>;
+}
+
 export interface LeaderboardResponse {
   week_start: string;
   district: string;
   district_avg_kwh: number;
   entries: LeaderboardEntry[];
+  weekly_top3_history: WeeklyTopThree[];
   resets_in_days: number;
 }
 
@@ -122,6 +135,14 @@ export interface ChallengesResponse {
   total_points: number;
   weekly_points: number;
   challenges: Challenge[];
+  completed_history: ChallengeHistoryEntry[];
+}
+
+export interface ChallengeHistoryEntry {
+  challenge_id: string;
+  title: string;
+  points_earned: number;
+  completed_at: string;
 }
 
 export interface CompleteChallengeRequest {
