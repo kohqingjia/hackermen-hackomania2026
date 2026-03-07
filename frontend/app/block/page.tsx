@@ -29,7 +29,7 @@ export default function BlockPage() {
     setUserId(uid);
     setPostalCode(bid);
 
-    getBlockUsage(bid, uid)
+    getBlockUsage(bid)
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));

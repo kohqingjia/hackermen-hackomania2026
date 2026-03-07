@@ -11,11 +11,11 @@ export default function BenchmarkCard({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getHouseholdBenchmark(userId)
+    getHouseholdBenchmark()
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
   if (loading) {
     return (

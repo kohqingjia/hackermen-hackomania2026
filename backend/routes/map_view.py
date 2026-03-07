@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Query
 from database.clickhouse import get_client
 from models.schemas import MapResponse, BlockMapEntry
+from utils.datetime_helper import get_app_date
 
 router = APIRouter(prefix="/api/map", tags=["map"])
 
@@ -28,7 +29,7 @@ def get_map(
     query_date: str = Query(default=None, alias="date"),
 ):
     client = get_client()
-    target_date = date.fromisoformat(query_date) if query_date else date.today()
+    target_date = date.fromisoformat(query_date) if query_date else get_app_date()
     previous_week_date = target_date - timedelta(days=7)
 
     # Current day avg per postal code
