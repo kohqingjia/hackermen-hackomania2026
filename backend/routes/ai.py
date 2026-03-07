@@ -422,7 +422,11 @@ def get_projections(
     tariff = 0.33  # SGD per kWh (approximate SP tariff)
     projected_bill = round(projected_total * tariff, 2)
 
-    target_bill = None
+    # Read target bill from user profile (stored during onboarding)
+    raw_target = user.get("target_bill")
+    target_bill = float(raw_target) if raw_target else None
+    if target_bill is not None and target_bill <= 0:
+        target_bill = None
 
     return ProjectionsResponse(
         user_id=effective_uid,
