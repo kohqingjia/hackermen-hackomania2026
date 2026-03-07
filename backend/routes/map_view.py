@@ -1,7 +1,7 @@
 """
 Map view route
 GET /api/map/{district}?date=YYYY-MM-DD
-  Returns all blocks in a district with avg usage and % reduction vs baseline.
+  Returns all blocks in a district with avg usage and % reduction vs district average.
   Used to colour-code blocks on the map.
 """
 
@@ -29,7 +29,7 @@ def get_map(
 ):
     client = get_client()
     target_date = date.fromisoformat(query_date) if query_date else date.today()
-    baseline_date = target_date - timedelta(days=7)
+    previous_week_date = target_date - timedelta(days=7)
 
     # Current day avg per block
     current_rows = client.query(
@@ -44,8 +44,8 @@ def get_map(
         parameters={"dist": district, "d": target_date.isoformat()},
     ).result_rows
 
-    # Baseline avg (7 days ago)
-    baseline_rows = client.query(
+    # Previous week average (7 days ago) for comparison
+    previous_week_rows = client.query(
         """
         SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg_kwh
         FROM energy_usage
@@ -53,15 +53,15 @@ def get_map(
           AND toDate(timestamp) = {bd:Date}
         GROUP BY block_id
         """,
-        parameters={"dist": district, "bd": baseline_date.isoformat()},
+        parameters={"dist": district, "bd": previous_week_date.isoformat()},
     ).result_rows
 
-    baseline_map = {r[0]: r[1] for r in baseline_rows}
+    previous_week_map = {r[0]: r[1] for r in previous_week_rows}
 
     entries = []
     for rank, (block_id, avg_kwh) in enumerate(current_rows, start=1):
-        baseline = baseline_map.get(block_id, avg_kwh)
-        reduction_pct = round(((baseline - avg_kwh) / baseline * 100) if baseline else 0, 1)
+        previous_avg = previous_week_map.get(block_id, avg_kwh)
+        reduction_pct = round(((previous_avg - avg_kwh) / previous_avg * 100) if previous_avg else 0, 1)
         lat, lng = BLOCK_COORDS.get(block_id, (1.427, 103.836))
 
         entries.append(BlockMapEntry(

@@ -76,6 +76,7 @@ export interface LeaderboardEntry {
 export interface LeaderboardResponse {
   week_start: string;
   district: string;
+  district_avg_kwh: number;
   entries: LeaderboardEntry[];
   resets_in_days: number;
 }

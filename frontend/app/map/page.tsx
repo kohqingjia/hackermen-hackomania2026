@@ -85,7 +85,7 @@ export default function MapPage() {
                 <p className={clsx("text-sm font-bold", block.reduction_pct >= 0 ? "text-green-600" : "text-red-500")}>
                   {block.reduction_pct >= 0 ? "-" : "+"}{Math.abs(block.reduction_pct)}%
                 </p>
-                <p className="text-[10px] text-sp-text-secondary">vs baseline</p>
+                <p className="text-[10px] text-sp-text-secondary">vs district average</p>
               </div>
             </button>
           );

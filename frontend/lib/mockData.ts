@@ -119,6 +119,7 @@ const daysUntilReset = 7 - ((new Date().getDay() + 6) % 7); // days until next M
 export const MOCK_LEADERBOARD: LeaderboardResponse = {
   week_start: weekStart.toISOString().slice(0, 10),
   district: "Yishun",
+  district_avg_kwh: 19.28,
   resets_in_days: daysUntilReset,
   entries: [
     { rank: 1, block_id: "BLK404", avg_kwh: 16.80, reduction_pct: 12, points: 320, weekly_change: -2.1 },

@@ -66,8 +66,8 @@ def get_leaderboard(
 
     prev_map = {r[0]: r[1] for r in prev}
 
-    # Baseline = first week of data
-    baseline = client.query(
+    # Historical average = first week of data
+    historical_avg = client.query(
         """
         SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
         FROM energy_usage
@@ -79,12 +79,12 @@ def get_leaderboard(
         """,
         parameters={"dist": district},
     ).result_rows
-    baseline_map = {r[0]: r[1] for r in baseline}
+    historical_avg_map = {r[0]: r[1] for r in historical_avg}
 
     entries = []
     for rank, (block_id, avg_kwh) in enumerate(current, start=1):
         prev_avg = prev_map.get(block_id, avg_kwh)
-        base_avg = baseline_map.get(block_id, avg_kwh)
+        base_avg = historical_avg_map.get(block_id, avg_kwh)
         reduction_pct = round(((base_avg - avg_kwh) / base_avg * 100) if base_avg else 0, 1)
         weekly_change = round(avg_kwh - prev_avg, 3)
         points = RANK_POINTS.get(rank, 10)
@@ -98,12 +98,15 @@ def get_leaderboard(
             weekly_change=weekly_change,
         ))
 
+    district_avg_kwh = round(sum(avg for _, avg in current) / len(current), 3) if current else 0.0
+
     next_monday = week_start + timedelta(days=7)
     resets_in = (next_monday - target_date).days
 
     return LeaderboardResponse(
         week_start=week_start.isoformat(),
         district=district,
+        district_avg_kwh=district_avg_kwh,
         entries=entries,
         resets_in_days=resets_in,
     )

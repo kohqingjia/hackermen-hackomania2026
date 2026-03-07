@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 /**
  * Leaderboard View
@@ -45,8 +45,8 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Points info card */}
-      <Card className="bg-sp-teal text-white border-0">
-        <p className="text-xs font-semibold opacity-80 mb-2">Weekly Points</p>
+      <Card className="bg-sp-teal text-black border-0">
+        <p className="text-m font-semibold opacity-80 mb-2">Weekly Points</p>
         <div className="flex justify-around">
           {[
             { rank: "1st", pts: "100 pts", emoji: "🥇" },
@@ -55,13 +55,22 @@ export default function LeaderboardPage() {
           ].map(({ rank, pts, emoji }) => (
             <div key={rank} className="text-center">
               <p className="text-lg">{emoji}</p>
-              <p className="text-xs font-bold">{rank}</p>
+              <p className="text-s font-bold">{rank}</p>
               <p className="text-[10px] opacity-80">+{pts}</p>
             </div>
           ))}
         </div>
-        <p className="text-[10px] opacity-70 mt-2 text-center">Ranked by % reduction from baseline — resets every Monday</p>
+        <p className="text-[10px] opacity-70 mt-2 text-center">Ranked by % reduction from district average — resets every Monday</p>
       </Card>
+
+      {/* District average (usage) */}
+      {data && (
+        <Card className="border-0">
+          <p className="text-m font-semibold opacity-80 mb-2">District Average</p>
+          <p className="text-lg font-bold">{data.district_avg_kwh.toFixed(1)} kWh/day</p>
+          <p className="text-xs opacity-70 mt-1">Average usage across all blocks in {data.district} this week.</p>
+        </Card>
+      )}
 
       {/* Rankings */}
       {loading ? (
