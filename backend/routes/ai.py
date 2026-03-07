@@ -67,8 +67,8 @@ def _get_user(client, user_id: str) -> dict:
             hu.Has_WFH_days,
             hu.Num_WFH
         FROM details_per_household hd
-        LEFT JOIN input_per_household hu ON hd.UserID = hu.UserID
-        WHERE hd.UserID = {uid:String}
+        LEFT JOIN input_per_household hu ON toString(hd.UserID) = hu.UserID
+        WHERE toString(hd.UserID) = {uid:String}
         LIMIT 1
         """,
         parameters={"uid": user_id},
@@ -80,7 +80,12 @@ def _get_user(client, user_id: str) -> dict:
         "num_residents", "num_children", "num_elderly", "num_tenants", "aircon_usage",
         "num_aircons", "has_wfh_days", "num_wfh",
     ]
-    return dict(zip(cols, row[0]))
+    result = dict(zip(cols, row[0]))
+    # Cast UUID values to strings
+    result["household_id"] = str(result["household_id"])
+    result["postal_code"] = str(result["postal_code"])
+    result["district"] = str(result["district"])
+    return result
 
 
 @router.get("/insights", response_model=AIInsightResponse)
@@ -109,9 +114,9 @@ def get_insights(
     def block_total(postal_code: str, d: date) -> float:
         rows = client.query(
             """
-            SELECT sum(e.`Consumption(kWh)`)
+            SELECT sum(`Consumption(kWh)`)
             FROM consumption_per_household_daily e
-            JOIN details_per_household hd ON e.HouseholdID = hd.HouseholdID
+            JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
             WHERE hd.PostalCode = {pc:String} AND e.Day = {d:Date}
             """,
             parameters={"pc": postal_code, "d": d.isoformat()},
@@ -260,9 +265,9 @@ def ai_chat(req: ChatRequest):
             )
             block_avg_kwh = _scalar(
                 """
-                SELECT avg(e.`Consumption(kWh)`)
+                SELECT avg(`Consumption(kWh)`)
                 FROM consumption_per_household_daily e
-                JOIN details_per_household hd ON e.HouseholdID = hd.HouseholdID
+                JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
                 WHERE hd.PostalCode={pc:String} AND e.Day = {d:Date}
                 """,
                 {"pc": user["postal_code"], "d": today.isoformat()},
@@ -410,9 +415,9 @@ def get_benchmark():
     # Average daily kWh for users with same flat_type in the same district
     profile_rows = client.query(
         """
-        SELECT sum(e.`Consumption(kWh)`) / countDistinct(e.HouseholdID) / 7
+        SELECT sum(`Consumption(kWh)`) / countDistinct(e.HouseholdID) / 7
         FROM consumption_per_household_daily e
-        JOIN details_per_household hd ON e.HouseholdID = hd.HouseholdID
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.Flat_type = {ft:String}
           AND hd.District = {dist:String}
           AND e.Day BETWEEN {s:Date} AND {e_end:Date}

@@ -17,14 +17,14 @@ router = APIRouter(prefix="/api/usage", tags=["usage"])
 
 
 def _get_household_id(client, user_id: str) -> str:
-    """Look up the HouseholdID for a user from household_data."""
+    """Look up the HouseholdID for a user from details_per_household."""
     row = client.query(
-        "SELECT HouseholdID FROM household_data WHERE UserID = {uid:String} LIMIT 1",
+        "SELECT toString(HouseholdID) FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
         parameters={"uid": user_id},
     ).result_rows
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return row[0][0]
+    return str(row[0][0])
 
 
 @router.get("/", response_model=UsageResponse)
@@ -39,8 +39,8 @@ def get_usage(
 
     rows = client.query(
         """
-        SELECT Timestamp, Consumption
-        FROM household_electricity_usage
+        SELECT Timestamp, `Consumption(kWh)`
+        FROM consumption_per_household
         WHERE HouseholdID = {hid:String}
           AND toDate(Timestamp) = {d:Date}
         ORDER BY Timestamp ASC
@@ -64,7 +64,7 @@ def get_usage(
     peak_point = max(data, key=lambda p: p.electricity_kwh)
 
     return UsageResponse(
-        user_id=user_id,
+        user_id=settings.user_id,
         date=date_str,
         data=data,
         total_kwh=total_kwh,

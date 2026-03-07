@@ -6,6 +6,7 @@ GET /api/block/{postal_code}?date=YYYY-MM-DD&user_id=...
 """
 
 from datetime import date, timedelta
+import math
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
 from config import settings
@@ -15,21 +16,29 @@ from utils.datetime_helper import get_app_date
 router = APIRouter(prefix="/api/block", tags=["block"])
 
 
+def _safe(v, ndigits=4) -> float:
+    """Return 0.0 for NaN / Inf, else round."""
+    f = float(v) if v is not None else 0.0
+    if math.isnan(f) or math.isinf(f):
+        return 0.0
+    return round(f, ndigits)
+
+
 def _resolve_user(client, user_id: str) -> tuple[str, str]:
     """Return (HouseholdID, PostalCode) for the given user."""
     row = client.query(
-        "SELECT HouseholdID, PostalCode FROM details_per_household WHERE UserID = {uid:String} LIMIT 1",
+        "SELECT toString(HouseholdID), PostalCode FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
         parameters={"uid": user_id},
     ).result_rows
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return row[0][0], row[0][1]
+    return str(row[0][0]), str(row[0][1])
 
 
 def _household_ids_for_postal(client, postal_code: str) -> list[str]:
     """Return all HouseholdIDs in a postal code."""
     rows = client.query(
-        "SELECT DISTINCT HouseholdID FROM details_per_household WHERE PostalCode = {pc:String}",
+        "SELECT DISTINCT toString(HouseholdID) FROM details_per_household WHERE PostalCode = {pc:String}",
         parameters={"pc": postal_code},
     ).result_rows
     return [r[0] for r in rows]
@@ -49,10 +58,10 @@ def get_block_usage(
     # Block average per half-hour slot (all households in this postal code)
     block_rows = client.query(
         """
-        SELECT e.Timestamp, avg(e.Consumption) AS avg_kwh
-                FROM consumption_per_household e
-                JOIN details_per_household hd ON e.HouseholdID = hd.HouseholdID
-                WHERE hd.PostalCode = {pc:String}
+        SELECT e.Timestamp, avg(`Consumption(kWh)`) AS avg_kwh
+        FROM consumption_per_household e
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+        WHERE hd.PostalCode = {pc:String}
           AND toDate(e.Timestamp) = {d:Date}
         GROUP BY e.Timestamp
         ORDER BY e.Timestamp ASC
@@ -63,7 +72,7 @@ def get_block_usage(
     # User's own readings
     user_rows = client.query(
         """
-        SELECT Timestamp, Consumption
+        SELECT Timestamp, `Consumption(kWh)`
                 FROM consumption_per_household
         WHERE HouseholdID = {hid:String}
           AND toDate(Timestamp) = {d:Date}
@@ -76,11 +85,11 @@ def get_block_usage(
         raise HTTPException(status_code=404, detail=f"No block data for {postal_code} on {date_str}")
 
     hourly_block_avg = [
-        HalfHourlyPoint(timestamp=str(r[0]), electricity_kwh=round(float(r[1]), 4), hour_label=r[0].strftime("%H:%M"))
+        HalfHourlyPoint(timestamp=str(r[0]), electricity_kwh=_safe(r[1], 4), hour_label=r[0].strftime("%H:%M"))
         for r in block_rows
     ]
     hourly_user = [
-        HalfHourlyPoint(timestamp=str(r[0]), electricity_kwh=round(float(r[1]), 4), hour_label=r[0].strftime("%H:%M"))
+        HalfHourlyPoint(timestamp=str(r[0]), electricity_kwh=_safe(r[1], 4), hour_label=r[0].strftime("%H:%M"))
         for r in user_rows
     ] if user_rows else hourly_block_avg  # fallback to block avg if no user data
 
@@ -106,54 +115,81 @@ def get_block_usage(
 def _daily_comparison_week(client, postal_code: str, household_id: str, ref_date: date) -> list[DailyComparisonPoint]:
     """Last 7 days: user daily total vs block daily average."""
     start = ref_date - timedelta(days=6)
-    rows = client.query(
+
+    # User's own daily consumption (already summed per day in table)
+    user_rows = client.query(
         """
-        SELECT
-                        d.Day AS d,
-                        sumIf(d.Consumption, d.HouseholdID = {hid:String}) AS user_kwh,
-                        avg(d.Consumption) AS block_avg_kwh
-                FROM consumption_per_household_daily d
-                JOIN details_per_household hd ON d.HouseholdID = hd.HouseholdID
-                WHERE hd.PostalCode = {pc:String}
-                    AND d.Day BETWEEN {s:Date} AND {e_end:Date}
-        GROUP BY d
-        ORDER BY d ASC
+        SELECT Day, `Consumption(kWh)`
+        FROM consumption_per_household_daily
+        WHERE HouseholdID = {hid:String}
+          AND Day BETWEEN {s:Date} AND {e_end:Date}
+        ORDER BY Day ASC
         """,
-        parameters={"hid": household_id, "pc": postal_code, "s": start.isoformat(), "e_end": ref_date.isoformat()},
+        parameters={"hid": household_id, "s": start.isoformat(), "e_end": ref_date.isoformat()},
     ).result_rows
+    user_by_day = {r[0]: float(r[1]) for r in user_rows}
+
+    # Block average per day across all households in this postal code
+    block_rows = client.query(
+        """
+        SELECT cd.Day, avg(`Consumption(kWh)`) AS block_avg
+        FROM consumption_per_household_daily cd
+        JOIN details_per_household hd ON cd.HouseholdID = toString(hd.HouseholdID)
+        WHERE hd.PostalCode = {pc:String}
+          AND cd.Day BETWEEN {s:Date} AND {e_end:Date}
+        GROUP BY cd.Day
+        ORDER BY cd.Day ASC
+        """,
+        parameters={"pc": postal_code, "s": start.isoformat(), "e_end": ref_date.isoformat()},
+    ).result_rows
+
     return [
         DailyComparisonPoint(
             day_label=r[0].strftime("%a"),
-            user_avg_kwh=round(float(r[1] or 0), 2),
-            block_avg_kwh=round(float(r[2] or 0), 2),
+            user_avg_kwh=_safe(user_by_day.get(r[0], 0), 2),
+            block_avg_kwh=_safe(r[1], 2),
         )
-        for r in rows
+        for r in block_rows
     ]
 
 
 def _weekly_comparison_month(client, postal_code: str, household_id: str, ref_date: date) -> list[WeeklyComparisonPoint]:
-    """Last 4 weeks: user weekly total vs block weekly average."""
+    """Last 4 weeks: user weekly average vs block weekly average."""
     start = ref_date - timedelta(days=27)
-    rows = client.query(
+
+    # User's weekly average (avg of daily values per week)
+    user_rows = client.query(
         """
-        SELECT
-                        toMonday(d.Day) AS wk,
-                        avgIf(d.Consumption, d.HouseholdID = {hid:String}) AS user_avg,
-                        avg(d.Consumption) AS block_avg
-                FROM consumption_per_household_daily d
-                JOIN details_per_household hd ON d.HouseholdID = hd.HouseholdID
-                WHERE hd.PostalCode = {pc:String}
-                    AND d.Day BETWEEN {s:Date} AND {e_end:Date}
+        SELECT toMonday(Day) AS wk, avg(`Consumption(kWh)`) AS user_avg
+        FROM consumption_per_household_daily
+        WHERE HouseholdID = {hid:String}
+          AND Day BETWEEN {s:Date} AND {e_end:Date}
         GROUP BY wk
         ORDER BY wk ASC
         """,
-        parameters={"hid": household_id, "pc": postal_code, "s": start.isoformat(), "e_end": ref_date.isoformat()},
+        parameters={"hid": household_id, "s": start.isoformat(), "e_end": ref_date.isoformat()},
     ).result_rows
+    user_by_wk = {r[0]: float(r[1]) for r in user_rows}
+
+    # Block weekly average across all households in this postal code
+    block_rows = client.query(
+        """
+        SELECT toMonday(cd.Day) AS wk, avg(`Consumption(kWh)`) AS block_avg
+        FROM consumption_per_household_daily cd
+        JOIN details_per_household hd ON cd.HouseholdID = toString(hd.HouseholdID)
+        WHERE hd.PostalCode = {pc:String}
+          AND cd.Day BETWEEN {s:Date} AND {e_end:Date}
+        GROUP BY wk
+        ORDER BY wk ASC
+        """,
+        parameters={"pc": postal_code, "s": start.isoformat(), "e_end": ref_date.isoformat()},
+    ).result_rows
+
     return [
         WeeklyComparisonPoint(
             week_label=f"W{i+1}",
-            user_avg_kwh=round(float(r[1] or 0), 2),
-            block_avg_kwh=round(float(r[2] or 0), 2),
+            user_avg_kwh=_safe(user_by_wk.get(r[0], 0), 2),
+            block_avg_kwh=_safe(r[1], 2),
         )
-        for i, r in enumerate(rows)
+        for i, r in enumerate(block_rows)
     ]

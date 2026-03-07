@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # Default user ID for all endpoints (useful for single-user demos/testing)
     # If set, endpoints will use this instead of requiring user_id parameter
     user_id: str = ""
+
+    # Required to begin app usage when USER_ID is not set
+    household_id: str = ""
     
     # App "current date" — useful when database only contains historical data
     # Format: YYYY-MM-DD (e.g., "2025-12-31")

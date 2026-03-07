@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { submitOnboarding } from "@/lib/api";
+import { getOnboarding, submitOnboarding } from "@/lib/api";
 import type { OnboardingForm as FormData } from "@/lib/types";
 
 const FLAT_TYPES = ["3-room", "4-room", "5-room"];
@@ -21,13 +21,34 @@ export default function OnboardingForm() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormData>({
     household_id: "",
-    district: "Yishun",
+    district: "Sembawang",
     postal_code: "752339",
     flat_type: "",
     num_residents: 1,
     aircon_usage: 1,
     num_wfh: 0,
   });
+
+  useEffect(() => {
+    getOnboarding()
+      .then((profile) => {
+        const backendUserId =
+          String(profile.UserID ?? profile.user_id ?? "").trim();
+        const backendPostalCode =
+          String(profile.Postal_Code ?? profile.postal_code ?? "").trim();
+
+        if (backendUserId) {
+          localStorage.setItem("powerblock_user_id", backendUserId);
+        }
+        if (backendPostalCode) {
+          localStorage.setItem("powerblock_postal_code", backendPostalCode);
+          setForm((prev) => ({ ...prev, postal_code: backendPostalCode }));
+        }
+      })
+      .catch(() => {
+        // No preconfigured backend profile found; continue normal onboarding flow.
+      });
+  }, []);
 
   const update = (key: keyof FormData, value: unknown) =>
     setForm((f) => ({ ...f, [key]: value }));
