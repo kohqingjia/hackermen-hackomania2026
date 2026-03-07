@@ -14,14 +14,16 @@ const OneMapLeaflet = dynamic(() => import("./OneMapLeaflet"), {
 interface BlockMapProps {
   blocks: BlockMapEntry[];
   userPostalCode?: string;
+  selectedPostalCode?: string;
   onBlockSelect?: (block: BlockMapEntry) => void;
 }
 
-export default function BlockMap({ blocks, userPostalCode, onBlockSelect }: BlockMapProps) {
+export default function BlockMap({ blocks, userPostalCode, selectedPostalCode, onBlockSelect }: BlockMapProps) {
   return (
     <OneMapLeaflet
       blocks={blocks}
       userPostalCode={userPostalCode}
+      selectedPostalCode={selectedPostalCode}
       onBlockSelect={onBlockSelect}
     />
   );

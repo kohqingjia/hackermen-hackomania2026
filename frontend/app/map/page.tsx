@@ -66,7 +66,7 @@ export default function MapPage() {
         const blocks = withDistrictComparison(data.blocks);
         setUsingFallback(isFallback);
         setMapData({ ...data, blocks });
-        setSelected(blocks.find((b) => b.postal_code === bid) || blocks[0] || null);
+        setSelected(null);
       };
 
       try {
@@ -128,7 +128,12 @@ export default function MapPage() {
       {loading ? (
         <div className="h-72 animate-pulse bg-sp-chart rounded-2xl" />
       ) : (
-        <BlockMap blocks={mapData?.blocks ?? []} userPostalCode={userPostalCode} onBlockSelect={setSelected} />
+        <BlockMap
+          blocks={mapData?.blocks ?? []}
+          userPostalCode={userPostalCode}
+          selectedPostalCode={selected?.postal_code}
+          onBlockSelect={setSelected}
+        />
       )}
 
       {/* Block list — sorted by rank */}
