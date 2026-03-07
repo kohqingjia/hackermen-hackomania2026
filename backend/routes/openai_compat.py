@@ -13,6 +13,7 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from utils.datetime_helper import get_app_date
 from pydantic import BaseModel
 
 from config import settings
@@ -96,7 +97,7 @@ def _build_user_context() -> str:
             return ""
         household_id, postal_code, district, flat_type, num_residents, aircon_usage, num_wfh = row[0][:7]
 
-        today = date.today()
+        today = get_app_date()
         yesterday = today - timedelta(days=1)
 
         def scalar(sql, params):

@@ -154,7 +154,7 @@ class ChallengesResponse(BaseModel):
 
 
 class CompleteChallengeRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None
     challenge_id: str
     photo_base64: Optional[str] = None
 

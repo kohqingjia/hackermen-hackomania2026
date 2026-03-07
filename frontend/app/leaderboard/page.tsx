@@ -23,10 +23,10 @@ export default function LeaderboardPage() {
     const bid = localStorage.getItem("powerblock_postal_code") || "752339";
     setUserPostalCode(bid);
 
-    getLeaderboard("Yishun")
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    // getLeaderboard("Yishun")
+    //   .then(setData)
+    //   .catch(console.error)
+    //   .finally(() => setLoading(false));
   }, []);
 
   const weekLabel = data

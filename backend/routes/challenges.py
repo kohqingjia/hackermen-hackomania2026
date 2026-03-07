@@ -12,6 +12,8 @@ Challenge types:
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
+from config import settings
+from utils.datetime_helper import get_app_date
 from models.schemas import (
     ChallengesResponse,
     Challenge,
@@ -68,9 +70,10 @@ CHALLENGE_CATALOGUE = [
 
 
 @router.get("", response_model=ChallengesResponse)
-def get_challenges(user_id: str = Query(...)):
+def get_challenges():
     client = get_client()
-    today = date.today()
+    user_id = settings.user_id
+    today = get_app_date()
     week_start = today - timedelta(days=6)
 
     title_map = {c.challenge_id: c.title for c in CHALLENGE_CATALOGUE}
@@ -145,13 +148,14 @@ def get_challenges(user_id: str = Query(...)):
 @router.post("/complete", response_model=CompleteChallengeResponse)
 def complete_challenge(data: CompleteChallengeRequest):
     client = get_client()
+    user_id = data.user_id or settings.user_id
 
     challenge = next((c for c in CHALLENGE_CATALOGUE if c.challenge_id == data.challenge_id), None)
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
     # Check not already completed today (daily reset)
-    today = date.today().isoformat()
+    today = get_app_date().isoformat()
     existing = client.query(
         """
         SELECT 1
@@ -161,21 +165,21 @@ def complete_challenge(data: CompleteChallengeRequest):
           AND toDate(completed_at) = {td:Date}
         LIMIT 1
         """,
-        parameters={"uid": data.user_id, "cid": data.challenge_id, "td": today},
+        parameters={"uid": user_id, "cid": data.challenge_id, "td": today},
     ).result_rows
     if existing:
         raise HTTPException(status_code=400, detail="Challenge already completed today")
 
     client.insert(
         "user_challenges",
-        [[data.user_id, data.challenge_id, datetime.utcnow(), "", challenge.points]],
+        [[user_id, data.challenge_id, datetime.utcnow(), "", challenge.points]],
         column_names=["user_id", "challenge_id", "completed_at", "photo_url", "points_earned"],
     )
 
     # Sum total points
     total = client.query(
         "SELECT sum(points_earned) FROM user_challenges WHERE user_id = {uid:String}",
-        parameters={"uid": data.user_id},
+        parameters={"uid": user_id},
     ).result_rows[0][0] or 0
 
     return CompleteChallengeResponse(
@@ -198,7 +202,7 @@ def _check_auto_challenges(client, user_id: str) -> bool:
 
     household_id = hd_row.result_rows[0][0]
     postal_code = hd_row.result_rows[0][1]
-    today = date.today().isoformat()
+    today = get_app_date().isoformat()
 
     user_avg = client.query(
         "SELECT avg(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",

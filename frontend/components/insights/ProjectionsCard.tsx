@@ -12,11 +12,11 @@ export default function ProjectionsCard({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getProjections(userId)
+    getProjections()
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
   if (loading) {
     return (

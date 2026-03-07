@@ -35,7 +35,7 @@ export default function ChallengesPage() {
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
 
-    getChallenges(uid)
+    getChallenges()
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -55,7 +55,7 @@ export default function ChallengesPage() {
       );
       setActiveChallenge(null);
       // Refresh challenges
-      const updated = await getChallenges(userId);
+      const updated = await getChallenges();
       setData(updated);
     } catch (e) {
       console.error(e);

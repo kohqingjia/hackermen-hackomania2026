@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Query
 from database.clickhouse import get_client
 from models.schemas import LeaderboardResponse, LeaderboardEntry, WeeklyTopThree, WeeklyTopBlock
+from utils.datetime_helper import get_app_date
 
 router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
@@ -25,7 +26,7 @@ def get_leaderboard(
     query_date: str = Query(default=None, alias="date"),
 ):
     client = get_client()
-    target_date = date.fromisoformat(query_date) if query_date else date.today()
+    target_date = date.fromisoformat(query_date) if query_date else get_app_date()
     week_start = _week_start(target_date)
     week_end = week_start + timedelta(days=6)
     prev_week_start = week_start - timedelta(days=7)

@@ -41,13 +41,13 @@ export default function DashboardPage() {
     setUserId(uid);
     setPostalCode(bid);
 
-    getBlockUsage(bid, uid)
+    getBlockUsage(bid)
       .then(setBlockUsage)
       .catch(console.error)
       .finally(() => setLoadingUsage(false));
 
     getLeaderboard("Yishun").then(setLeaderboard).catch(console.error);
-    getAIMonthlyAnalysis(uid).then(setMonthly).catch(console.error);
+    getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
   }, [router]);
 
   if (!userId) return null;

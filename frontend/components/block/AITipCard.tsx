@@ -23,11 +23,11 @@ export default function AITipCard({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAIRecommendations(userId)
+    getAIRecommendations()
       .then((r) => setRecs(r.recommendations))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
   if (loading) {
     return (
