@@ -259,7 +259,7 @@ Shows rankings of blocks participating in the challenge.
 
 Ranking factors:
 
-- percentage reduction from baseline
+- percentage reduction from district average
 - participation rate
 - consistency of energy-saving actions
 

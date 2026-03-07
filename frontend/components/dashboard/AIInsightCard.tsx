@@ -47,7 +47,7 @@ export default function AIInsightCard({ userId, date }: AIInsightCardProps) {
           <p className="text-xs font-semibold text-sp-teal uppercase tracking-wide mb-1">AI Insight</p>
           <p className="text-sm text-sp-text leading-relaxed">{data.insight}</p>
           <div className="mt-3 bg-sp-alert-light border border-amber-200 rounded-xl px-3 py-2">
-            <p className="text-xs font-semibold text-sp-alert mb-0.5">Tonight's Tip</p>
+            <p className="text-xs font-semibold text-sp-alert mb-0.5">Tonight&apos;s Tip</p>
             <p className="text-xs text-sp-text">{data.tip}</p>
           </div>
           <p className="text-xs text-sp-text-secondary mt-2">{data.comparison}</p>

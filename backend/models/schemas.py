@@ -56,7 +56,7 @@ class BlockMapEntry(BaseModel):
     block_id: str
     district: str
     avg_kwh: float
-    reduction_pct: float    # vs baseline
+    reduction_pct: float    # vs district average
     rank: int
     lat: float
     lng: float
@@ -81,6 +81,7 @@ class LeaderboardEntry(BaseModel):
 class LeaderboardResponse(BaseModel):
     week_start: str
     district: str
+    district_avg_kwh: float  # average across the district for the week
     entries: list[LeaderboardEntry]
     resets_in_days: int
 

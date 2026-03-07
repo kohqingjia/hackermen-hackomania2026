@@ -54,7 +54,7 @@ export default function LeaderboardList({ entries, userBlockId }: LeaderboardLis
                   "text-xs font-semibold",
                   entry.reduction_pct >= 0 ? "text-green-600" : "text-red-500"
                 )}>
-                  {entry.reduction_pct >= 0 ? "-" : "+"}{Math.abs(entry.reduction_pct)}% vs baseline
+                  {entry.reduction_pct >= 0 ? "-" : "+"}{Math.abs(entry.reduction_pct)}% vs district average
                 </span>
                 <span className={clsx(
                   "text-[10px]",
