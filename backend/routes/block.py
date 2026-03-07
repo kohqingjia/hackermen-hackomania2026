@@ -27,7 +27,7 @@ def _safe(v, ndigits=4) -> float:
 def _resolve_user(client, user_id: str) -> tuple[str, str]:
     """Return (HouseholdID, PostalCode) for the given user."""
     row = client.query(
-        "SELECT HouseholdID, PostalCode FROM details_per_household WHERE UserID = {uid:String} LIMIT 1",
+        "SELECT toString(HouseholdID), PostalCode FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
         parameters={"uid": user_id},
     ).result_rows
     if not row:
@@ -38,7 +38,7 @@ def _resolve_user(client, user_id: str) -> tuple[str, str]:
 def _household_ids_for_postal(client, postal_code: str) -> list[str]:
     """Return all HouseholdIDs in a postal code."""
     rows = client.query(
-        "SELECT DISTINCT HouseholdID FROM details_per_household WHERE PostalCode = {pc:String}",
+        "SELECT DISTINCT toString(HouseholdID) FROM details_per_household WHERE PostalCode = {pc:String}",
         parameters={"pc": postal_code},
     ).result_rows
     return [r[0] for r in rows]
@@ -132,7 +132,7 @@ def _daily_comparison_week(client, postal_code: str, household_id: str, ref_date
     # Block average per day across all households in this postal code
     block_rows = client.query(
         """
-        SELECT cd.Day, avg(cd.`Consumption(kWh)`) AS block_avg
+        SELECT cd.Day, avg(`Consumption(kWh)`) AS block_avg
         FROM consumption_per_household_daily cd
         JOIN details_per_household hd ON cd.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.PostalCode = {pc:String}
@@ -174,7 +174,7 @@ def _weekly_comparison_month(client, postal_code: str, household_id: str, ref_da
     # Block weekly average across all households in this postal code
     block_rows = client.query(
         """
-        SELECT toMonday(cd.Day) AS wk, avg(cd.`Consumption(kWh)`) AS block_avg
+        SELECT toMonday(cd.Day) AS wk, avg(`Consumption(kWh)`) AS block_avg
         FROM consumption_per_household_daily cd
         JOIN details_per_household hd ON cd.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.PostalCode = {pc:String}

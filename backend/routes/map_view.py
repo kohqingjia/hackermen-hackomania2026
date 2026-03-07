@@ -45,7 +45,7 @@ def get_map(
     # Current day avg per postal code
     current_rows = client.query(
         """
-        SELECT hd.PostalCode, avg(e.`Consumption(kWh)`) * 48 AS daily_avg_kwh
+        SELECT hd.PostalCode, avg(`Consumption(kWh)`) * 48 AS daily_avg_kwh
         FROM consumption_per_household e
         JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.District = {dist:String}
@@ -59,7 +59,7 @@ def get_map(
     # Previous week average (7 days ago) for comparison
     previous_week_rows = client.query(
         """
-        SELECT hd.PostalCode, avg(e.`Consumption(kWh)`) * 48 AS daily_avg_kwh
+        SELECT hd.PostalCode, avg(`Consumption(kWh)`) * 48 AS daily_avg_kwh
         FROM consumption_per_household e
         JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.District = {dist:String}

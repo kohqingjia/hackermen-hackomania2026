@@ -28,7 +28,7 @@ def create_onboarding(data: OnboardingRequest):
 
     if configured_user_id:
         configured_exists = client.query(
-            "SELECT 1 FROM details_per_household WHERE UserID = {uid:String} LIMIT 1",
+            "SELECT 1 FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
             parameters={"uid": configured_user_id},
         ).result_rows
         if configured_exists:
@@ -38,7 +38,7 @@ def create_onboarding(data: OnboardingRequest):
             )
 
     existing = client.query(
-        "SELECT UserID FROM details_per_household WHERE HouseholdID = {hid:String} LIMIT 1",
+        "SELECT UserID FROM details_per_household WHERE toString(HouseholdID) = {hid:String} LIMIT 1",
         parameters={"hid": household_id},
     ).result_rows
     if existing:
@@ -105,7 +105,7 @@ def get_onboarding():
     configured_user_id = (settings.user_id or "").strip()
     if configured_user_id:
         configured_exists = client.query(
-            "SELECT 1 FROM details_per_household WHERE UserID = {uid:String} LIMIT 1",
+            "SELECT 1 FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
             parameters={"uid": configured_user_id},
         ).result_rows
         if configured_exists:
@@ -115,7 +115,7 @@ def get_onboarding():
             )
 
     existing = client.query(
-        "SELECT UserID FROM details_per_household WHERE HouseholdID = {hid:String} LIMIT 1",
+        "SELECT UserID FROM details_per_household WHERE toString(HouseholdID) = {hid:String} LIMIT 1",
         parameters={"hid": settings.household_id},
     ).result_rows
     if existing:
@@ -134,8 +134,8 @@ def get_onboarding():
             hui.Num_elderly, hui.Num_tenants, hui.Aircon_usage,
             hui.Num_Aircons, hui.Has_WFH_days, hui.Num_WFH
         FROM details_per_household hd
-        LEFT JOIN input_per_household hui ON hd.UserID = hui.UserID
-        WHERE hd.HouseholdID = {hid:String}
+        LEFT JOIN input_per_household hui ON toString(hd.UserID) = hui.UserID
+        WHERE toString(hd.HouseholdID) = {hid:String}
         LIMIT 1
         """,
         parameters={"hid": settings.household_id},

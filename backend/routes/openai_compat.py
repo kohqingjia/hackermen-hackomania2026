@@ -72,11 +72,11 @@ def _build_user_context() -> str:
         uid = _active_user_id
         row = db.query(
             """
-            SELECT hd.HouseholdID, hd.Postal_Code, hd.District, hd.Flat_type,
+            SELECT toString(hd.HouseholdID) AS HouseholdID, hd.PostalCode, hd.District, hd.Flat_type,
                    hu.Num_residents, hu.Aircon_usage, hu.Num_WFH
-            FROM household_data hd
-            LEFT JOIN household_user_input hu ON hd.UserID = hu.UserID
-            WHERE hd.UserID = {uid:String} LIMIT 1
+            FROM details_per_household hd
+            LEFT JOIN input_per_household hu ON toString(hd.UserID) = hu.UserID
+            WHERE toString(hd.UserID) = {uid:String} LIMIT 1
             """,
             parameters={"uid": uid},
         ).result_rows
@@ -85,11 +85,11 @@ def _build_user_context() -> str:
             uid = FALLBACK_USER_ID
             row = db.query(
                 """
-                SELECT hd.HouseholdID, hd.Postal_Code, hd.District, hd.Flat_type,
+                SELECT toString(hd.HouseholdID) AS HouseholdID, hd.PostalCode, hd.District, hd.Flat_type,
                        hu.Num_residents, hu.Aircon_usage, hu.Num_WFH
-                FROM household_data hd
-                LEFT JOIN household_user_input hu ON hd.UserID = hu.UserID
-                WHERE hd.UserID = {uid:String} LIMIT 1
+                FROM details_per_household hd
+                LEFT JOIN input_per_household hu ON toString(hd.UserID) = hu.UserID
+                WHERE toString(hd.UserID) = {uid:String} LIMIT 1
                 """,
                 parameters={"uid": uid},
             ).result_rows
@@ -105,25 +105,25 @@ def _build_user_context() -> str:
             return float(rows[0][0] or 0) if rows else 0.0
 
         today_kwh = scalar(
-            "SELECT sum(Consumption) FROM household_electricity_usage "
+            "SELECT sum(`Consumption(kWh)`) FROM consumption_per_household "
             "WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
             {"hid": household_id, "d": today.isoformat()},
         )
         yesterday_kwh = scalar(
-            "SELECT sum(Consumption) FROM household_electricity_usage "
+            "SELECT sum(`Consumption(kWh)`) FROM consumption_per_household "
             "WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
             {"hid": household_id, "d": yesterday.isoformat()},
         )
         block_avg = scalar(
-            "SELECT avg(e.Consumption)*48 FROM household_electricity_usage e "
-            "JOIN household_data hd ON e.HouseholdID = hd.HouseholdID "
-            "WHERE hd.Postal_Code={pc:String} AND toDate(e.Timestamp)={d:Date}",
+            "SELECT avg(`Consumption(kWh)`)*48 FROM consumption_per_household e "
+            "JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID) "
+            "WHERE hd.PostalCode={pc:String} AND toDate(e.Timestamp)={d:Date}",
             {"pc": postal_code, "d": today.isoformat()},
         )
         peak_rows = db.query(
-            "SELECT Timestamp FROM household_electricity_usage "
+            "SELECT Timestamp FROM consumption_per_household "
             "WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} "
-            "ORDER BY Consumption DESC LIMIT 1",
+            "ORDER BY `Consumption(kWh)` DESC LIMIT 1",
             parameters={"hid": household_id, "d": today.isoformat()},
         ).result_rows
         peak_hour = peak_rows[0][0].strftime("%H:%M") if peak_rows else "N/A"

@@ -69,7 +69,7 @@ export default function DashboardPage() {
           .finally(() => setLoadingUsage(false));
 
         //getLeaderboard("Yishun").then(setLeaderboard).catch(console.error);
-        //getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
+        getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
       })
       .catch(() => {
         localStorage.removeItem("powerblock_user_id");
@@ -157,7 +157,7 @@ export default function DashboardPage() {
       ) : null}
 
       {/* AI Insight */}
-      {/* <AIInsightCard userId={userId} /> */}
+      <AIInsightCard userId={userId} />
     </div>
   );
 }

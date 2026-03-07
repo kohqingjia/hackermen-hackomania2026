@@ -35,12 +35,12 @@ def get_leaderboard(
     # Current week avg per postal code
     current = client.query(
         """
-        SELECT hd.Postal_Code, avg(e.Consumption) * 48 AS daily_avg
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        SELECT hd.PostalCode, avg(`Consumption(kWh)`) * 48 AS daily_avg
+        FROM consumption_per_household e
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.District = {dist:String}
           AND toDate(e.Timestamp) BETWEEN {ws:Date} AND {we:Date}
-        GROUP BY hd.Postal_Code
+        GROUP BY hd.PostalCode
         ORDER BY daily_avg ASC
         """,
         parameters={
@@ -53,12 +53,12 @@ def get_leaderboard(
     # Previous week for comparison
     prev = client.query(
         """
-        SELECT hd.Postal_Code, avg(e.Consumption) * 48 AS daily_avg
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        SELECT hd.PostalCode, avg(`Consumption(kWh)`) * 48 AS daily_avg
+        FROM consumption_per_household e
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.District = {dist:String}
           AND toDate(e.Timestamp) BETWEEN {ws:Date} AND {we:Date}
-        GROUP BY hd.Postal_Code
+        GROUP BY hd.PostalCode
         """,
         parameters={
             "dist": district,
@@ -72,14 +72,14 @@ def get_leaderboard(
     # Historical average = first day of data
     historical_avg = client.query(
         """
-        SELECT hd.Postal_Code, avg(e.Consumption) * 48 AS daily_avg
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        SELECT hd.PostalCode, avg(`Consumption(kWh)`) * 48 AS daily_avg
+        FROM consumption_per_household e
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.District = {dist:String}
           AND toDate(e.Timestamp) = (
-              SELECT min(toDate(Timestamp)) FROM household_electricity_usage
+              SELECT min(toDate(Timestamp)) FROM consumption_per_household
           )
-        GROUP BY hd.Postal_Code
+        GROUP BY hd.PostalCode
         """,
         parameters={"dist": district},
     ).result_rows
@@ -110,11 +110,12 @@ def get_leaderboard(
         hist_week_end = hist_week_start + timedelta(days=6)
         week_rows = client.query(
             """
-            SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
-            FROM energy_usage
-            WHERE district = {dist:String}
-              AND toDate(timestamp) BETWEEN {ws:Date} AND {we:Date}
-            GROUP BY block_id
+            SELECT hd.PostalCode AS block_id, avg(`Consumption(kWh)`) * 48 AS daily_avg
+            FROM consumption_per_household e
+            JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+            WHERE hd.District = {dist:String}
+              AND toDate(e.Timestamp) BETWEEN {ws:Date} AND {we:Date}
+            GROUP BY hd.PostalCode
             ORDER BY daily_avg ASC
             """,
             parameters={
