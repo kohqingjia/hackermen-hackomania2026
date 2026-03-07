@@ -18,16 +18,16 @@ import type { BlockUsageResponse } from "@/lib/types";
 export default function BlockPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
-  const [blockId, setBlockId] = useState("BLK404");
+  const [postalCode, setPostalCode] = useState("752339");
   const [data, setData] = useState<BlockUsageResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const uid = localStorage.getItem("powerblock_user_id");
-    const bid = localStorage.getItem("powerblock_block_id") || "BLK404";
+    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
-    setBlockId(bid);
+    setPostalCode(bid);
 
     getBlockUsage(bid, uid)
       .then(setData)
@@ -42,8 +42,8 @@ export default function BlockPage() {
       {/* Header */}
       <div>
         <p className="text-xs text-sp-text-secondary uppercase tracking-wide">Block View</p>
-        <h1 className="text-xl font-bold text-sp-text mt-0.5">{blockId}</h1>
-        <p className="text-xs text-sp-text-secondary">Yishun · How do you compare?</p>
+        <h1 className="text-xl font-bold text-sp-text mt-0.5">Block {postalCode}</h1>
+        <p className="text-xs text-sp-text-secondary">Sembawang · How do you compare?</p>
       </div>
 
       {/* Comparison stats */}

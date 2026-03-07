@@ -1,14 +1,22 @@
 // ---- Onboarding ----
 
 export interface OnboardingForm {
-  age_group: string;
-  household_type: string;
-  num_tenants?: number;
-  work_from_home: boolean;
-  energy_saving_target: number;
-  target_bill_sgd?: number;
-  block_id: string;
+  household_id: string;
+  area?: string;
+  region?: string;
   district: string;
+  postal_code: string;
+  dwelling_type?: string;
+  flat_type: string;           // "3-room" | "4-room" | "5-room"
+  floor_area_sqm?: number;
+  num_residents: number;
+  num_children?: number;
+  num_elderly?: number;
+  num_tenants?: number;
+  aircon_usage: number;        // 0-3
+  num_aircons?: number;
+  has_wfh_days?: string[];     // e.g. ["Monday","Wednesday"]
+  num_wfh: number;             // 0-7
 }
 
 export interface OnboardingResponse {
@@ -36,7 +44,7 @@ export interface UsageResponse {
 // ---- Block ----
 
 export interface BlockUsageResponse {
-  block_id: string;
+  postal_code: string;
   date: string;
   block_avg_kwh: number;
   user_kwh: number;
@@ -63,7 +71,7 @@ export interface WeeklyComparisonPoint {
 // ---- Map ----
 
 export interface BlockMapEntry {
-  block_id: string;
+  postal_code: string;
   district: string;
   avg_kwh: number;
   reduction_pct: number;
@@ -81,7 +89,7 @@ export interface MapResponse {
 
 export interface LeaderboardEntry {
   rank: number;
-  block_id: string;
+  postal_code: string;
   avg_kwh: number;
   reduction_pct: number;
   points: number;
@@ -187,7 +195,7 @@ export interface ProjectionsResponse {
 
 export interface HouseholdBenchmarkResponse {
   user_id: string;
-  household_type: string;
+  flat_type: string;
   district: string;
   user_avg_daily_kwh: number;
   profile_avg_daily_kwh: number;

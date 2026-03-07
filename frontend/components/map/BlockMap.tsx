@@ -5,7 +5,7 @@ import type { BlockMapEntry } from "@/lib/types";
 
 interface BlockMapProps {
   blocks: BlockMapEntry[];
-  userBlockId?: string;
+  userPostalCode?: string;
 }
 
 // Colour-code blocks by reduction %
@@ -25,14 +25,14 @@ function getReductionLabel(pct: number): string {
 
 // Simple fixed-position grid layout for demo (no real map library needed)
 const POSITIONS: Record<string, { top: string; left: string }> = {
-  BLK402: { top: "55%", left: "15%" },
-  BLK403: { top: "30%", left: "35%" },
-  BLK404: { top: "45%", left: "58%" },
-  BLK405: { top: "65%", left: "72%" },
-  BLK406: { top: "20%", left: "72%" },
+  "752339": { top: "55%", left: "15%" },
+  "752341": { top: "30%", left: "35%" },
+  "750341": { top: "45%", left: "58%" },
+  "751339": { top: "65%", left: "72%" },
+  "750331": { top: "20%", left: "72%" },
 };
 
-export default function BlockMap({ blocks, userBlockId }: BlockMapProps) {
+export default function BlockMap({ blocks, userPostalCode }: BlockMapProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   return (
@@ -67,23 +67,23 @@ export default function BlockMap({ blocks, userBlockId }: BlockMapProps) {
 
       {/* Block pins */}
       {blocks.map((block) => {
-        const pos = POSITIONS[block.block_id] || { top: "50%", left: "50%" };
-        const isUser = block.block_id === userBlockId;
-        const isHovered = hovered === block.block_id;
+        const pos = POSITIONS[block.postal_code] || { top: "50%", left: "50%" };
+        const isUser = block.postal_code === userPostalCode;
+        const isHovered = hovered === block.postal_code;
 
         return (
           <div
-            key={block.block_id}
+            key={block.postal_code}
             className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
             style={{ top: pos.top, left: pos.left }}
-            onMouseEnter={() => setHovered(block.block_id)}
+            onMouseEnter={() => setHovered(block.postal_code)}
             onMouseLeave={() => setHovered(null)}
-            onTouchStart={() => setHovered(block.block_id)}
+            onTouchStart={() => setHovered(block.postal_code)}
           >
             {/* Tooltip */}
             {isHovered && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white rounded-xl shadow-lg p-2 min-w-[110px] z-10 pointer-events-none">
-                <p className="text-xs font-bold text-sp-text">{block.block_id}</p>
+                <p className="text-xs font-bold text-sp-text">Blk {block.postal_code}</p>
                 <p className="text-xs text-green-600 font-medium">-{block.reduction_pct}% {getReductionLabel(block.reduction_pct)}</p>
                 <p className="text-[10px] text-sp-text-secondary">{block.avg_kwh.toFixed(2)} kWh/day avg</p>
                 <p className="text-[10px] text-sp-text-secondary">Rank #{block.rank}</p>
@@ -97,7 +97,7 @@ export default function BlockMap({ blocks, userBlockId }: BlockMapProps) {
               isUser ? "border-white scale-110 shadow-md" : "border-transparent",
               isHovered && "scale-110"
             )}>
-              <p className="text-[10px] font-bold leading-tight">{block.block_id.replace("BLK", "Blk ")}</p>
+              <p className="text-[10px] font-bold leading-tight">Blk {block.postal_code}</p>
               <p className="text-[9px] font-medium opacity-80">-{block.reduction_pct}%</p>
             </div>
 

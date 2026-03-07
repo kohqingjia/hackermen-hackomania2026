@@ -50,11 +50,11 @@ export default function BenchmarkCard({ userId }: { userId: string }) {
           )}>
             <p className={clsx("text-sm font-semibold", isBelow ? "text-green-700" : "text-sp-alert")}>
               {isBelow
-                ? `${absPct.toFixed(1)}% below average for ${data.household_type} homes`
-                : `${absPct.toFixed(1)}% above average for ${data.household_type} homes`}
+                ? `${absPct.toFixed(1)}% below average for ${data.flat_type} homes`
+                : `${absPct.toFixed(1)}% above average for ${data.flat_type} homes`}
             </p>
             <p className="text-xs text-sp-text-secondary mt-0.5">
-              Compared to other {data.household_type} flats in {data.district}
+              Compared to other {data.flat_type} flats in {data.district}
             </p>
           </div>
 
@@ -65,7 +65,7 @@ export default function BenchmarkCard({ userId }: { userId: string }) {
               <p className="text-sm font-bold text-sp-text">{data.user_avg_daily_kwh.toFixed(2)} kWh/day</p>
             </div>
             <div>
-              <p className="text-[10px] text-sp-text-secondary uppercase tracking-wide">{data.household_type} avg</p>
+              <p className="text-[10px] text-sp-text-secondary uppercase tracking-wide">{data.flat_type} avg</p>
               <p className="text-sm font-bold text-sp-text">{data.profile_avg_daily_kwh.toFixed(2)} kWh/day</p>
             </div>
           </div>

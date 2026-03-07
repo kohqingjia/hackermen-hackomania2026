@@ -21,7 +21,7 @@ import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse
 export default function DashboardPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
-  const [blockId, setBlockId] = useState("BLK404");
+  const [postalCode, setPostalCode] = useState("752339");
   const [blockUsage, setBlockUsage] = useState<BlockUsageResponse | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
@@ -36,10 +36,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const uid = localStorage.getItem("powerblock_user_id");
-    const bid = localStorage.getItem("powerblock_block_id") || "BLK404";
+    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
-    setBlockId(bid);
+    setPostalCode(bid);
 
     getBlockUsage(bid, uid)
       .then(setBlockUsage)
@@ -63,7 +63,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-sp-text-secondary">{today}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
-          <p className="text-xs text-sp-text-secondary">{blockId}, Yishun</p>
+          <p className="text-xs text-sp-text-secondary">{postalCode}, Yishun</p>
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">
           <svg className="w-5 h-5 stroke-sp-teal" fill="none" viewBox="0 0 24 24" strokeWidth={2}>

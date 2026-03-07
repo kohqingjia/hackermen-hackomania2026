@@ -13,13 +13,13 @@ import { getLeaderboard } from "@/lib/api";
 import type { LeaderboardResponse } from "@/lib/types";
 
 export default function LeaderboardPage() {
-  const [userBlockId, setUserBlockId] = useState("BLK404");
+  const [userPostalCode, setUserPostalCode] = useState("752339");
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const bid = localStorage.getItem("powerblock_block_id") || "BLK404";
-    setUserBlockId(bid);
+    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
+    setUserPostalCode(bid);
 
     getLeaderboard("Yishun")
       .then(setData)
@@ -78,7 +78,7 @@ export default function LeaderboardPage() {
           {[1, 2, 3, 4, 5].map((i) => <LoadingCard key={i} />)}
         </div>
       ) : data ? (
-        <LeaderboardList entries={data.entries} userBlockId={userBlockId} />
+        <LeaderboardList entries={data.entries} userPostalCode={userPostalCode} />
       ) : (
         <Card><p className="text-sm text-sp-text-secondary text-center py-4">No data available</p></Card>
       )}

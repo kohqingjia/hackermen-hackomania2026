@@ -5,23 +5,28 @@ import { useRouter } from "next/navigation";
 import { submitOnboarding } from "@/lib/api";
 import type { OnboardingForm as FormData } from "@/lib/types";
 
-const AGE_GROUPS = ["18-30", "31-45", "46-60", "60+"];
-const HOUSEHOLD_TYPES = ["1-room", "2-room", "3-room", "4-room", "5-room", "Executive"];
-const BLOCKS = ["BLK402", "BLK403", "BLK404", "BLK405", "BLK406"];
-const TARGETS = [5, 10, 15, 20];
+const FLAT_TYPES = ["3-room", "4-room", "5-room"];
+const POSTAL_CODES = ["752339", "752341", "750341", "751339", "750331"];
+const AIRCON_LEVELS: { value: number; label: string }[] = [
+  { value: 0, label: "Never" },
+  { value: 1, label: "Sometimes" },
+  { value: 2, label: "Every night" },
+  { value: 3, label: "Whole day" },
+];
+const WFH_OPTIONS = [0, 1, 2, 3, 4, 5];
 
 export default function OnboardingForm() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormData>({
-    age_group: "",
-    household_type: "",
-    num_tenants: undefined,
-    work_from_home: false,
-    energy_saving_target: 10,
-    block_id: "BLK404",
+    household_id: "",
     district: "Yishun",
+    postal_code: "752339",
+    flat_type: "",
+    num_residents: 1,
+    aircon_usage: 1,
+    num_wfh: 0,
   });
 
   const update = (key: keyof FormData, value: unknown) =>
@@ -30,9 +35,15 @@ export default function OnboardingForm() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const res = await submitOnboarding(form);
+      // Auto-generate household_id from postal code
+      const idx = Math.floor(Math.random() * 10);
+      const dataToSend = {
+        ...form,
+        household_id: form.household_id || `${form.postal_code}-HH${String(idx).padStart(2, "0")}`,
+      };
+      const res = await submitOnboarding(dataToSend);
       localStorage.setItem("powerblock_user_id", res.user_id);
-      localStorage.setItem("powerblock_block_id", form.block_id);
+      localStorage.setItem("powerblock_postal_code", form.postal_code);
       router.push("/dashboard");
     } catch (e) {
       console.error(e);
@@ -58,97 +69,111 @@ export default function OnboardingForm() {
       </button>
     </div>,
 
-    // Step 1 — Age group
-    <StepWrapper key="age" title="How old are you?" subtitle="Helps us personalise your tips">
-      <div className="grid grid-cols-2 gap-3">
-        {AGE_GROUPS.map((g) => (
-          <SelectButton
-            key={g}
-            label={g}
-            selected={form.age_group === g}
-            onClick={() => update("age_group", g)}
-          />
-        ))}
-      </div>
-    </StepWrapper>,
-
-    // Step 2 — Household type
+    // Step 1 — Flat type
     <StepWrapper key="flat" title="What type of flat?" subtitle="We'll estimate typical appliance loads">
-      <div className="grid grid-cols-2 gap-3">
-        {HOUSEHOLD_TYPES.map((t) => (
+      <div className="grid grid-cols-3 gap-3">
+        {FLAT_TYPES.map((t) => (
           <SelectButton
             key={t}
             label={t}
-            selected={form.household_type === t}
-            onClick={() => update("household_type", t)}
+            selected={form.flat_type === t}
+            onClick={() => update("flat_type", t)}
           />
         ))}
       </div>
     </StepWrapper>,
 
-    // Step 3 — Work from home + tenants
-    <StepWrapper key="wfh" title="A bit more about your household">
-      <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={form.work_from_home}
-          onChange={(e) => update("work_from_home", e.target.checked)}
-          className="w-5 h-5 accent-sp-teal"
-        />
-        <span className="text-sp-text text-sm font-medium">I work from home</span>
-      </label>
-      <div className="mt-4">
-        <label className="text-sm text-sp-text-secondary mb-1 block">Number of household members (optional)</label>
-        <input
-          type="number"
-          min={1}
-          max={10}
-          placeholder="e.g. 4"
-          value={form.num_tenants ?? ""}
-          onChange={(e) => update("num_tenants", e.target.value ? parseInt(e.target.value) : undefined)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
-        />
+    // Step 2 — Household members + postal code
+    <StepWrapper key="household" title="About your household">
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm text-sp-text-secondary mb-1 block">Your HDB Block (Postal Code)</label>
+          <select
+            value={form.postal_code}
+            onChange={(e) => update("postal_code", e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal bg-white"
+          >
+            {POSTAL_CODES.map((pc) => <option key={pc} value={pc}>{pc} Yishun</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-sm text-sp-text-secondary mb-1 block">Number of residents</label>
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={form.num_residents}
+            onChange={(e) => update("num_residents", parseInt(e.target.value) || 1)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm text-sp-text-secondary mb-1 block">Children</label>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={form.num_children ?? 0}
+              onChange={(e) => update("num_children", parseInt(e.target.value) || 0)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-sp-text-secondary mb-1 block">Elderly</label>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={form.num_elderly ?? 0}
+              onChange={(e) => update("num_elderly", parseInt(e.target.value) || 0)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
+            />
+          </div>
+        </div>
       </div>
     </StepWrapper>,
 
-    // Step 4 — Block + target
-    <StepWrapper key="target" title="Set your energy goal" subtitle="Track progress against your target">
-      <div className="mb-4">
-        <label className="text-sm text-sp-text-secondary mb-1 block">Your HDB Block</label>
-        <select
-          value={form.block_id}
-          onChange={(e) => update("block_id", e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal bg-white"
-        >
-          {BLOCKS.map((b) => <option key={b} value={b}>{b} Yishun</option>)}
-        </select>
-      </div>
-      <label className="text-sm text-sp-text-secondary mb-2 block">Reduce electricity bill by:</label>
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        {TARGETS.map((t) => (
-          <SelectButton
-            key={t}
-            label={`${t}%`}
-            selected={form.energy_saving_target === t}
-            onClick={() => update("energy_saving_target", t)}
-          />
-        ))}
-      </div>
-      <div className="mt-4">
-        <label className="text-sm text-sp-text-secondary mb-1 block">Monthly bill target (optional)</label>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sp-text-secondary text-sm">S$</span>
+    // Step 3 — Aircon + WFH
+    <StepWrapper key="aircon" title="Energy habits" subtitle="Helps us give better recommendations">
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm text-sp-text-secondary mb-2 block">Aircon usage</label>
+          <div className="grid grid-cols-2 gap-3">
+            {AIRCON_LEVELS.map(({ value, label }) => (
+              <SelectButton
+                key={value}
+                label={label}
+                selected={form.aircon_usage === value}
+                onClick={() => update("aircon_usage", value)}
+              />
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-sm text-sp-text-secondary mb-2 block">How many days per week do you work from home?</label>
+          <div className="grid grid-cols-6 gap-2">
+            {WFH_OPTIONS.map((n) => (
+              <SelectButton
+                key={n}
+                label={String(n)}
+                selected={form.num_wfh === n}
+                onClick={() => update("num_wfh", n)}
+              />
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-sm text-sp-text-secondary mb-1 block">Number of aircons (optional)</label>
           <input
             type="number"
             min={0}
-            step={5}
-            placeholder="e.g. 95"
-            value={form.target_bill_sgd ?? ""}
-            onChange={(e) => update("target_bill_sgd", e.target.value ? parseFloat(e.target.value) : undefined)}
-            className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
+            max={10}
+            value={form.num_aircons ?? 1}
+            onChange={(e) => update("num_aircons", parseInt(e.target.value) || 0)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
           />
         </div>
-        <p className="text-xs text-sp-text-secondary mt-1.5">We'll track your projected bill against this target</p>
       </div>
     </StepWrapper>,
   ];
@@ -156,10 +181,9 @@ export default function OnboardingForm() {
   const isLastStep = step === steps.length - 1;
   const canProceed =
     step === 0 ||
-    (step === 1 && form.age_group) ||
-    (step === 2 && form.household_type) ||
-    step === 3 ||
-    step === 4;
+    (step === 1 && form.flat_type) ||
+    step === 2 ||
+    step === 3;
 
   return (
     <div className="px-5 py-6 page-enter">

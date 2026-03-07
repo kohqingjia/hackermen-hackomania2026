@@ -15,19 +15,19 @@ import type { MapResponse, BlockMapEntry } from "@/lib/types";
 import clsx from "clsx";
 
 export default function MapPage() {
-  const [userBlockId, setUserBlockId] = useState("BLK404");
+  const [userPostalCode, setUserPostalCode] = useState("752339");
   const [mapData, setMapData] = useState<MapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<BlockMapEntry | null>(null);
 
   useEffect(() => {
-    const bid = localStorage.getItem("powerblock_block_id") || "BLK404";
-    setUserBlockId(bid);
+    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
+    setUserPostalCode(bid);
 
     getMap("Yishun")
       .then((data) => {
         setMapData(data);
-        setSelected(data.blocks.find((b) => b.block_id === bid) || data.blocks[0]);
+        setSelected(data.blocks.find((b) => b.postal_code === bid) || data.blocks[0]);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -46,18 +46,18 @@ export default function MapPage() {
       {loading ? (
         <div className="h-72 animate-pulse bg-sp-chart rounded-2xl" />
       ) : mapData ? (
-        <BlockMap blocks={mapData.blocks} userBlockId={userBlockId} />
+        <BlockMap blocks={mapData.blocks} userPostalCode={userPostalCode} />
       ) : null}
 
       {/* Block list — sorted by rank */}
       <div className="space-y-2">
         {(mapData?.blocks ?? []).map((block) => {
-          const isUser = block.block_id === userBlockId;
-          const isSelected = selected?.block_id === block.block_id;
+          const isUser = block.postal_code === userPostalCode;
+          const isSelected = selected?.postal_code === block.postal_code;
 
           return (
             <button
-              key={block.block_id}
+              key={block.postal_code}
               onClick={() => setSelected(block)}
               className={clsx(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-2xl border text-left transition-colors",
@@ -77,7 +77,7 @@ export default function MapPage() {
               </span>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-sp-text">
-                  {block.block_id} {isUser && <span className="text-[10px] text-sp-teal">(You)</span>}
+                  {block.postal_code} {isUser && <span className="text-[10px] text-sp-teal">(You)</span>}
                 </p>
                 <p className="text-xs text-sp-text-secondary">{block.avg_kwh.toFixed(2)} kWh/day</p>
               </div>

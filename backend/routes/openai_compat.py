@@ -63,31 +63,39 @@ class OAIRequest(BaseModel):
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 def _build_user_context() -> str:
-    """Query ClickHouse (or MockClient) and return a rich context string."""
+    """Query ClickHouse and return a rich context string."""
     try:
         db = get_client()
 
         # ── User profile ──
         uid = _active_user_id
         row = db.query(
-            "SELECT block_id, household_type, age_group, energy_saving_target "
-            "FROM users WHERE user_id={uid:String} LIMIT 1",
+            """
+            SELECT hd.HouseholdID, hd.Postal_Code, hd.District, hd.Flat_type,
+                   hu.Num_residents, hu.Aircon_usage, hu.Num_WFH
+            FROM household_data hd
+            LEFT JOIN household_user_input hu ON hd.UserID = hu.UserID
+            WHERE hd.UserID = {uid:String} LIMIT 1
+            """,
             parameters={"uid": uid},
         ).result_rows
         if not row:
-            # Fall back to demo user (e.g. after server restart clears in-memory mock data)
+            # Fall back to demo user if the given user_id is not found
             uid = FALLBACK_USER_ID
             row = db.query(
-                "SELECT block_id, household_type, age_group, energy_saving_target "
-                "FROM users WHERE user_id={uid:String} LIMIT 1",
+                """
+                SELECT hd.HouseholdID, hd.Postal_Code, hd.District, hd.Flat_type,
+                       hu.Num_residents, hu.Aircon_usage, hu.Num_WFH
+                FROM household_data hd
+                LEFT JOIN household_user_input hu ON hd.UserID = hu.UserID
+                WHERE hd.UserID = {uid:String} LIMIT 1
+                """,
                 parameters={"uid": uid},
             ).result_rows
         if not row:
             return ""
-        block_id, household_type, age_group, target = row[0][:4]
+        household_id, postal_code, district, flat_type, num_residents, aircon_usage, num_wfh = row[0][:7]
 
-        idx = int(uid.replace("-", "")[:4], 16) % 10
-        household_id = f"{block_id}-HH{idx:02d}"
         today = date.today()
         yesterday = today - timedelta(days=1)
 
@@ -96,24 +104,25 @@ def _build_user_context() -> str:
             return float(rows[0][0] or 0) if rows else 0.0
 
         today_kwh = scalar(
-            "SELECT sum(electricity_kwh) FROM energy_usage "
-            "WHERE household_id={hid:String} AND toDate(timestamp)={d:Date}",
+            "SELECT sum(Consumption) FROM household_electricity_usage "
+            "WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
             {"hid": household_id, "d": today.isoformat()},
         )
         yesterday_kwh = scalar(
-            "SELECT sum(electricity_kwh) FROM energy_usage "
-            "WHERE household_id={hid:String} AND toDate(timestamp)={d:Date}",
+            "SELECT sum(Consumption) FROM household_electricity_usage "
+            "WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
             {"hid": household_id, "d": yesterday.isoformat()},
         )
         block_avg = scalar(
-            "SELECT avg(electricity_kwh)*48 FROM energy_usage "
-            "WHERE block_id={bid:String} AND toDate(timestamp)={d:Date}",
-            {"bid": block_id, "d": today.isoformat()},
+            "SELECT avg(e.Consumption)*48 FROM household_electricity_usage e "
+            "JOIN household_data hd ON e.HouseholdID = hd.HouseholdID "
+            "WHERE hd.Postal_Code={pc:String} AND toDate(e.Timestamp)={d:Date}",
+            {"pc": postal_code, "d": today.isoformat()},
         )
         peak_rows = db.query(
-            "SELECT timestamp FROM energy_usage "
-            "WHERE household_id={hid:String} AND toDate(timestamp)={d:Date} "
-            "ORDER BY electricity_kwh DESC LIMIT 1",
+            "SELECT Timestamp FROM household_electricity_usage "
+            "WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} "
+            "ORDER BY Consumption DESC LIMIT 1",
             parameters={"hid": household_id, "d": today.isoformat()},
         ).result_rows
         peak_hour = peak_rows[0][0].strftime("%H:%M") if peak_rows else "N/A"
@@ -123,8 +132,9 @@ def _build_user_context() -> str:
 
         return (
             f"[LIVE DATA from ClickHouse] "
-            f"User: {household_type} flat in {block_id}, age {age_group}, "
-            f"target {target}% reduction. "
+            f"User: {flat_type} flat at postal code {postal_code}, "
+            f"{num_residents or 0} residents, aircon level {aircon_usage or 0}, "
+            f"WFH {num_wfh or 0} days/week. "
             f"Today so far: {today_kwh:.2f} kWh (peak {peak_hour}). "
             f"Block avg: {block_avg:.2f} kWh "
             f"({'above' if diff_block > 0 else 'below'} by {abs(diff_block):.2f} kWh). "

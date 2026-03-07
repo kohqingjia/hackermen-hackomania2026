@@ -1,7 +1,7 @@
 """
 Leaderboard route
 GET /api/leaderboard/{district}
-  Returns weekly block rankings with points.
+  Returns weekly postal-code (block) rankings with points.
   Resets every Monday. Points: 1st=100, 2nd=80, 3rd=25.
 """
 
@@ -31,14 +31,15 @@ def get_leaderboard(
     prev_week_start = week_start - timedelta(days=7)
     prev_week_end = week_start - timedelta(days=1)
 
-    # Current week avg per block
+    # Current week avg per postal code
     current = client.query(
         """
-        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
-        FROM energy_usage
-        WHERE district = {dist:String}
-          AND toDate(timestamp) BETWEEN {ws:Date} AND {we:Date}
-        GROUP BY block_id
+        SELECT hd.Postal_Code, avg(e.Consumption) * 48 AS daily_avg
+        FROM household_electricity_usage e
+        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        WHERE hd.District = {dist:String}
+          AND toDate(e.Timestamp) BETWEEN {ws:Date} AND {we:Date}
+        GROUP BY hd.Postal_Code
         ORDER BY daily_avg ASC
         """,
         parameters={
@@ -51,11 +52,12 @@ def get_leaderboard(
     # Previous week for comparison
     prev = client.query(
         """
-        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
-        FROM energy_usage
-        WHERE district = {dist:String}
-          AND toDate(timestamp) BETWEEN {ws:Date} AND {we:Date}
-        GROUP BY block_id
+        SELECT hd.Postal_Code, avg(e.Consumption) * 48 AS daily_avg
+        FROM household_electricity_usage e
+        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        WHERE hd.District = {dist:String}
+          AND toDate(e.Timestamp) BETWEEN {ws:Date} AND {we:Date}
+        GROUP BY hd.Postal_Code
         """,
         parameters={
             "dist": district,
@@ -66,32 +68,33 @@ def get_leaderboard(
 
     prev_map = {r[0]: r[1] for r in prev}
 
-    # Historical average = first week of data
+    # Historical average = first day of data
     historical_avg = client.query(
         """
-        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
-        FROM energy_usage
-        WHERE district = {dist:String}
-          AND toDate(timestamp) = (
-              SELECT min(toDate(timestamp)) FROM energy_usage WHERE district = {dist:String}
+        SELECT hd.Postal_Code, avg(e.Consumption) * 48 AS daily_avg
+        FROM household_electricity_usage e
+        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        WHERE hd.District = {dist:String}
+          AND toDate(e.Timestamp) = (
+              SELECT min(toDate(Timestamp)) FROM household_electricity_usage
           )
-        GROUP BY block_id
+        GROUP BY hd.Postal_Code
         """,
         parameters={"dist": district},
     ).result_rows
     historical_avg_map = {r[0]: r[1] for r in historical_avg}
 
     entries = []
-    for rank, (block_id, avg_kwh) in enumerate(current, start=1):
-        prev_avg = prev_map.get(block_id, avg_kwh)
-        base_avg = historical_avg_map.get(block_id, avg_kwh)
+    for rank, (postal_code, avg_kwh) in enumerate(current, start=1):
+        prev_avg = prev_map.get(postal_code, avg_kwh)
+        base_avg = historical_avg_map.get(postal_code, avg_kwh)
         reduction_pct = round(((base_avg - avg_kwh) / base_avg * 100) if base_avg else 0, 1)
         weekly_change = round(avg_kwh - prev_avg, 3)
         points = RANK_POINTS.get(rank, 10)
 
         entries.append(LeaderboardEntry(
             rank=rank,
-            block_id=block_id,
+            postal_code=postal_code,
             avg_kwh=round(avg_kwh, 3),
             reduction_pct=reduction_pct,
             points=points,

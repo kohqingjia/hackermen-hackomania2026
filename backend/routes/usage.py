@@ -2,7 +2,8 @@
 Usage route
 GET /api/usage/{user_id}?date=YYYY-MM-DD
   Returns half-hourly kWh for a household on a given day.
-  The demo maps user_id → a seeded household_id deterministically.
+  Looks up household_data to find the user's HouseholdID, then queries
+  household_electricity_usage for Consumption data.
 """
 
 from datetime import date, datetime
@@ -12,20 +13,16 @@ from models.schemas import UsageResponse, HalfHourlyPoint
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
 
-DEMO_HOUSEHOLD_MAP = {
-    # Maps block_id to a representative household for demo
-    "BLK402": "BLK402-HH00",
-    "BLK403": "BLK403-HH00",
-    "BLK404": "BLK404-HH00",
-    "BLK405": "BLK405-HH00",
-    "BLK406": "BLK406-HH00",
-}
 
-
-def _get_household_id(user_id: str, block_id: str) -> str:
-    """Derive a deterministic household from user_id for demo."""
-    idx = int(user_id.replace("-", "")[:4], 16) % 10
-    return f"{block_id}-HH{idx:02d}"
+def _get_household_id(client, user_id: str) -> str:
+    """Look up the HouseholdID for a user from household_data."""
+    row = client.query(
+        "SELECT HouseholdID FROM household_data WHERE UserID = {uid:String} LIMIT 1",
+        parameters={"uid": user_id},
+    ).result_rows
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    return row[0][0]
 
 
 @router.get("/{user_id}", response_model=UsageResponse)
@@ -34,28 +31,18 @@ def get_usage(
     query_date: str = Query(default=None, alias="date"),
 ):
     client = get_client()
-
-    # Resolve user's block
-    user_row = client.query(
-        "SELECT block_id FROM users WHERE user_id = {uid:String} LIMIT 1",
-        parameters={"uid": user_id},
-    )
-    if not user_row.result_rows:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    block_id = user_row.result_rows[0][0]
-    household_id = _get_household_id(user_id, block_id)
+    household_id = _get_household_id(client, user_id)
 
     target_date = date.fromisoformat(query_date) if query_date else date.today()
     date_str = target_date.isoformat()
 
     rows = client.query(
         """
-        SELECT timestamp, electricity_kwh
-        FROM energy_usage
-        WHERE household_id = {hid:String}
-          AND toDate(timestamp) = {d:Date}
-        ORDER BY timestamp ASC
+        SELECT Timestamp, Consumption
+        FROM household_electricity_usage
+        WHERE HouseholdID = {hid:String}
+          AND toDate(Timestamp) = {d:Date}
+        ORDER BY Timestamp ASC
         """,
         parameters={"hid": household_id, "d": date_str},
     ).result_rows
@@ -66,7 +53,7 @@ def get_usage(
     data = [
         HalfHourlyPoint(
             timestamp=str(r[0]),
-            electricity_kwh=round(r[1], 4),
+            electricity_kwh=round(float(r[1]), 4),
             hour_label=r[0].strftime("%H:%M"),
         )
         for r in rows

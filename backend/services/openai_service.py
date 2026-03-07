@@ -21,8 +21,8 @@ def generate_usage_insight(
     peak_hour: str,
     block_avg_kwh: float,
     prev_day_kwh: float,
-    household_type: str,
-    age_group: str,
+    flat_type: str,
+    aircon_usage: int = 0,
 ) -> dict:
     """
     Returns: { insight, tip, comparison }
@@ -32,7 +32,7 @@ def generate_usage_insight(
 
     prompt = f"""You are an energy coach for a Singapore HDB household.
 
-User profile: {household_type} flat, age group {age_group}.
+User profile: {flat_type} flat, aircon usage level {aircon_usage}/3.
 Today's total usage: {user_kwh_total:.2f} kWh
 Peak usage hour: {peak_hour}
 Block average today: {block_avg_kwh:.2f} kWh
@@ -61,10 +61,10 @@ Respond in JSON with keys: insight, tip, comparison. Keep each under 30 words. U
 
 def generate_recommendations(
     user_kwh_by_slot: list[float],
-    household_type: str,
-    age_group: str,
-    work_from_home: bool,
-    energy_saving_target_pct: float,
+    flat_type: str,
+    num_wfh: int = 0,
+    aircon_usage: int = 0,
+    num_residents: int = 0,
 ) -> list[dict]:
     """
     Returns list of: { title, action, estimated_saving_kwh, estimated_saving_sgd, time_of_day, priority }
@@ -75,8 +75,7 @@ def generate_recommendations(
 
     prompt = f"""You are an AI energy advisor for a Singapore HDB resident.
 
-Household: {household_type} flat, age group {age_group}, work from home: {work_from_home}.
-Energy saving target: {energy_saving_target_pct:.0f}% reduction.
+Household: {flat_type} flat, {num_residents} residents, aircon usage level {aircon_usage}/3, WFH {num_wfh} days/week.
 Top usage hours today: {', '.join(peak_hours)}.
 
 Generate 3 personalised energy-saving recommendations.
@@ -108,7 +107,7 @@ def generate_monthly_analysis(
     previous_month_kwh: float,
     budget_sgd: float,
     target_reduction_pct: float,
-    household_type: str,
+    flat_type: str,
 ) -> str:
     """Returns a short narrative paragraph for the monthly analysis view."""
 
@@ -118,7 +117,7 @@ def generate_monthly_analysis(
 
     prompt = f"""You are a friendly energy coach for a Singapore HDB resident.
 
-Household type: {household_type}
+Household type: {flat_type}
 This month: {current_month_kwh:.1f} kWh (est. S${current_bill:.2f})
 Last month: {previous_month_kwh:.1f} kWh
 Change: {change_pct:+.1f}%

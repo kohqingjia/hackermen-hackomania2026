@@ -9,6 +9,7 @@ from routes.leaderboard import router as leaderboard_router
 from routes.challenges import router as challenges_router
 from routes.ai import router as ai_router
 from routes.openai_compat import router as openai_compat_router
+from database.clickhouse import init_schema
 
 app = FastAPI(
     title="PowerBlock API",
@@ -37,6 +38,12 @@ app.include_router(leaderboard_router)
 app.include_router(challenges_router)
 app.include_router(ai_router)
 app.include_router(openai_compat_router)
+
+
+@app.on_event("startup")
+def on_startup():
+    """Initialise ClickHouse schema on startup."""
+    init_schema()
 
 
 @app.get("/health")

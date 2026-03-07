@@ -6,13 +6,25 @@ from datetime import datetime
 # --- Onboarding ---
 
 class OnboardingRequest(BaseModel):
-    age_group: str          # "18-30", "31-45", "46-60", "60+"
-    household_type: str     # "1-room", "2-room", "3-room", "4-room", "5-room", "executive"
-    num_tenants: Optional[int] = None
-    work_from_home: bool = False
-    energy_saving_target: float = 10.0   # % reduction target
-    block_id: str = "BLK404"
-    district: str = "Yishun"
+    """User-submitted household info (maps to household_data + household_user_input)."""
+    # household_data fields
+    household_id: str                           # e.g. "752339-HH03"
+    area: str = "North"
+    region: str = "North-East"
+    district: str = "Sembawang"
+    postal_code: str = "752339"
+    dwelling_type: str = "HDB"
+    flat_type: str = "4-room"                   # "3-room" | "4-room" | "5-room"
+    # household_user_input fields
+    floor_area_sqm: Optional[float] = None
+    num_residents: int = 1
+    num_children: int = 0
+    num_elderly: int = 0
+    num_tenants: int = 0
+    aircon_usage: int = 1                       # 0-Never, 1-Sometimes, 2-Every_night, 3-Whole_day
+    num_aircons: int = 1
+    has_wfh_days: list[str] = []                # e.g. ["Monday","Wednesday"]
+    num_wfh: int = 0                            # 0-7
 
 
 class OnboardingResponse(BaseModel):
@@ -37,10 +49,22 @@ class UsageResponse(BaseModel):
     peak_hour: str
 
 
-# --- Block ---
+# --- Block (Postal Code grouping) ---
+
+class DailyComparisonPoint(BaseModel):
+    day_label: str
+    user_avg_kwh: float
+    block_avg_kwh: float
+
+
+class WeeklyComparisonPoint(BaseModel):
+    week_label: str
+    user_avg_kwh: float
+    block_avg_kwh: float
+
 
 class BlockUsageResponse(BaseModel):
-    block_id: str
+    postal_code: str        # replaces block_id — this is the "block"
     date: str
     block_avg_kwh: float
     user_kwh: float
@@ -48,12 +72,14 @@ class BlockUsageResponse(BaseModel):
     difference_pct: float   # negative = user is below block avg (good)
     hourly_block_avg: list[HalfHourlyPoint]
     hourly_user: list[HalfHourlyPoint]
+    daily_comparison_week: list[DailyComparisonPoint] = []
+    weekly_comparison_month: list[WeeklyComparisonPoint] = []
 
 
 # --- Map ---
 
 class BlockMapEntry(BaseModel):
-    block_id: str
+    postal_code: str        # replaces block_id
     district: str
     avg_kwh: float
     reduction_pct: float    # vs district average
@@ -71,7 +97,7 @@ class MapResponse(BaseModel):
 
 class LeaderboardEntry(BaseModel):
     rank: int
-    block_id: str
+    postal_code: str        # replaces block_id
     avg_kwh: float
     reduction_pct: float
     points: int
@@ -153,4 +179,33 @@ class AIMonthlyAnalysisResponse(BaseModel):
     projected_bill_sgd: float
     budget_sgd: float
     narrative: str
+    generated_at: str
+
+
+# --- Insights / Anomaly / Projections / Benchmark ---
+
+class AnomalyResponse(BaseModel):
+    user_id: str
+    has_anomaly: bool
+    analysis: str
+    generated_at: str
+
+
+class ProjectionsResponse(BaseModel):
+    user_id: str
+    projected_bill_sgd: float
+    projected_avg_daily_kwh: float
+    projected_total_kwh: float
+    days_remaining: int
+    target_bill_sgd: Optional[float] = None
+    generated_at: str
+
+
+class HouseholdBenchmarkResponse(BaseModel):
+    user_id: str
+    flat_type: str          # replaces household_type
+    district: str
+    user_avg_daily_kwh: float
+    profile_avg_daily_kwh: float
+    difference_pct: float
     generated_at: str

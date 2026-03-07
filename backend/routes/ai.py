@@ -16,7 +16,16 @@ from services.openai_service import (
     generate_monthly_analysis,
     chat_with_coach,
 )
-from models.schemas import AIInsightResponse, AIRecommendResponse, AIMonthlyAnalysisResponse, AIRecommendation
+from models.schemas import (
+    AIInsightResponse,
+    AIRecommendResponse,
+    AIMonthlyAnalysisResponse,
+    AIRecommendation,
+    AnomalyResponse,
+    ProjectionsResponse,
+    HouseholdBenchmarkResponse,
+)
+import calendar
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -37,13 +46,36 @@ class ChatResponse(BaseModel):
 
 
 def _get_user(client, user_id: str) -> dict:
+    """Return combined profile from household_data + household_user_input."""
     row = client.query(
-        "SELECT block_id, household_type, age_group, energy_saving_target, work_from_home FROM users WHERE user_id={uid:String} LIMIT 1",
+        """
+        SELECT
+            hd.HouseholdID,
+            hd.Postal_Code,
+            hd.District,
+            hd.Flat_type,
+            hd.Dwelling_type,
+            hu.Num_residents,
+            hu.Num_children,
+            hu.Num_elderly,
+            hu.Aircon_usage,
+            hu.Num_Aircons,
+            hu.Num_WFH,
+            hu.Floor_area_sqm
+        FROM household_data hd
+        LEFT JOIN household_user_input hu ON hd.UserID = hu.UserID
+        WHERE hd.UserID = {uid:String}
+        LIMIT 1
+        """,
         parameters={"uid": user_id},
     ).result_rows
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    cols = ["block_id", "household_type", "age_group", "energy_saving_target", "work_from_home"]
+    cols = [
+        "household_id", "postal_code", "district", "flat_type", "dwelling_type",
+        "num_residents", "num_children", "num_elderly", "aircon_usage",
+        "num_aircons", "num_wfh", "floor_area_sqm",
+    ]
     return dict(zip(cols, row[0]))
 
 
@@ -57,32 +89,36 @@ def get_insights(
     target_date = date.fromisoformat(query_date) if query_date else date.today()
     yesterday = target_date - timedelta(days=1)
 
-    idx = int(user_id.replace("-", "")[:4], 16) % 10
-    household_id = f"{user['block_id']}-HH{idx:02d}"
+    household_id = user["household_id"]
 
     def daily_total(hid: str, d: date) -> float:
         rows = client.query(
-            "SELECT sum(electricity_kwh) FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date}",
+            "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
             parameters={"hid": hid, "d": d.isoformat()},
         ).result_rows
         return float(rows[0][0] or 0)
 
-    def block_total(bid: str, d: date) -> float:
+    def block_total(postal_code: str, d: date) -> float:
         rows = client.query(
-            "SELECT avg(electricity_kwh) * 48 FROM energy_usage WHERE block_id={bid:String} AND toDate(timestamp)={d:Date}",
-            parameters={"bid": bid, "d": d.isoformat()},
+            """
+            SELECT avg(e.Consumption) * 48
+            FROM household_electricity_usage e
+            JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+            WHERE hd.Postal_Code = {pc:String} AND toDate(e.Timestamp) = {d:Date}
+            """,
+            parameters={"pc": postal_code, "d": d.isoformat()},
         ).result_rows
         return float(rows[0][0] or 0)
 
     def peak_hour(hid: str, d: date) -> str:
         rows = client.query(
-            "SELECT timestamp FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date} ORDER BY electricity_kwh DESC LIMIT 1",
+            "SELECT Timestamp FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY Consumption DESC LIMIT 1",
             parameters={"hid": hid, "d": d.isoformat()},
         ).result_rows
         return rows[0][0].strftime("%H:%M") if rows else "20:00"
 
     user_kwh = daily_total(household_id, target_date)
-    block_avg = block_total(user["block_id"], target_date)
+    block_avg = block_total(user["postal_code"], target_date)
     prev_kwh = daily_total(household_id, yesterday)
     ph = peak_hour(household_id, target_date)
 
@@ -92,8 +128,8 @@ def get_insights(
         peak_hour=ph,
         block_avg_kwh=block_avg,
         prev_day_kwh=prev_kwh,
-        household_type=user["household_type"],
-        age_group=user["age_group"],
+        flat_type=user["flat_type"],
+        aircon_usage=user.get("aircon_usage", 0),
     )
 
     return AIInsightResponse(
@@ -110,22 +146,21 @@ def get_recommendations(user_id: str):
     client = get_client()
     user = _get_user(client, user_id)
 
-    idx = int(user_id.replace("-", "")[:4], 16) % 10
-    household_id = f"{user['block_id']}-HH{idx:02d}"
+    household_id = user["household_id"]
     today = date.today().isoformat()
 
     rows = client.query(
-        "SELECT electricity_kwh FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date} ORDER BY timestamp ASC",
+        "SELECT Consumption FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY Timestamp ASC",
         parameters={"hid": household_id, "d": today},
     ).result_rows
     kwh_by_slot = [float(r[0]) for r in rows] if rows else [0.3] * 48
 
     recs = generate_recommendations(
         user_kwh_by_slot=kwh_by_slot,
-        household_type=user["household_type"],
-        age_group=user["age_group"],
-        work_from_home=bool(user["work_from_home"]),
-        energy_saving_target_pct=user["energy_saving_target"],
+        flat_type=user["flat_type"],
+        num_wfh=user.get("num_wfh", 0),
+        aircon_usage=user.get("aircon_usage", 0),
+        num_residents=user.get("num_residents", 0),
     )
 
     return AIRecommendResponse(
@@ -140,8 +175,7 @@ def get_monthly_analysis(user_id: str):
     client = get_client()
     user = _get_user(client, user_id)
 
-    idx = int(user_id.replace("-", "")[:4], 16) % 10
-    household_id = f"{user['block_id']}-HH{idx:02d}"
+    household_id = user["household_id"]
 
     today = date.today()
     current_month_start = today.replace(day=1)
@@ -150,7 +184,7 @@ def get_monthly_analysis(user_id: str):
 
     def month_total(hid: str, start: date, end: date) -> float:
         rows = client.query(
-            "SELECT sum(electricity_kwh) FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp) BETWEEN {s:Date} AND {e:Date}",
+            "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp) BETWEEN {s:Date} AND {e:Date}",
             parameters={"hid": hid, "s": start.isoformat(), "e": end.isoformat()},
         ).result_rows
         return float(rows[0][0] or 0)
@@ -161,14 +195,15 @@ def get_monthly_analysis(user_id: str):
     budget_sgd = 80.0  # default budget
     projected_bill = round(current_kwh * 0.33 * (30 / max(today.day, 1)), 2)
     change_pct = round(((current_kwh - prev_kwh) / prev_kwh * 100) if prev_kwh else 0, 1)
-    on_track = change_pct <= -user["energy_saving_target"]
+    target_reduction = 10  # default 10% target
+    on_track = change_pct <= -target_reduction
 
     narrative = generate_monthly_analysis(
         current_month_kwh=current_kwh,
         previous_month_kwh=prev_kwh,
         budget_sgd=budget_sgd,
-        target_reduction_pct=user["energy_saving_target"],
-        household_type=user["household_type"],
+        target_reduction_pct=target_reduction,
+        flat_type=user["flat_type"],
     )
 
     return AIMonthlyAnalysisResponse(
@@ -193,28 +228,32 @@ def ai_chat(req: ChatRequest):
             user = _get_user(db, req.user_id)
             today = date.today()
             yesterday = today - timedelta(days=1)
-            idx = int(req.user_id.replace("-", "")[:4], 16) % 10
-            household_id = f"{user['block_id']}-HH{idx:02d}"
+            household_id = user["household_id"]
 
             def _scalar(sql, params):
                 rows = db.query(sql, parameters=params).result_rows
                 return float(rows[0][0] or 0) if rows else 0.0
 
             today_kwh = _scalar(
-                "SELECT sum(electricity_kwh) FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date}",
+                "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
                 {"hid": household_id, "d": today.isoformat()},
             )
             yesterday_kwh = _scalar(
-                "SELECT sum(electricity_kwh) FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date}",
+                "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
                 {"hid": household_id, "d": yesterday.isoformat()},
             )
             block_avg_kwh = _scalar(
-                "SELECT avg(electricity_kwh)*48 FROM energy_usage WHERE block_id={bid:String} AND toDate(timestamp)={d:Date}",
-                {"bid": user["block_id"], "d": today.isoformat()},
+                """
+                SELECT avg(e.Consumption)*48
+                FROM household_electricity_usage e
+                JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+                WHERE hd.Postal_Code={pc:String} AND toDate(e.Timestamp)={d:Date}
+                """,
+                {"pc": user["postal_code"], "d": today.isoformat()},
             )
             # peak hour
             peak_rows = db.query(
-                "SELECT timestamp FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date} ORDER BY electricity_kwh DESC LIMIT 1",
+                "SELECT Timestamp FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY Consumption DESC LIMIT 1",
                 parameters={"hid": household_id, "d": today.isoformat()},
             ).result_rows
             peak_hour = peak_rows[0][0].strftime("%H:%M") if peak_rows else "N/A"
@@ -223,8 +262,9 @@ def ai_chat(req: ChatRequest):
             diff_yesterday = today_kwh - yesterday_kwh
 
             user_context = (
-                f"User profile: {user['household_type']} HDB flat in {user['block_id']}, "
-                f"age group {user['age_group']}, energy saving target {user['energy_saving_target']}%. "
+                f"User profile: {user['flat_type']} HDB flat at postal code {user['postal_code']}, "
+                f"{user.get('num_residents', 0)} residents, aircon usage level {user.get('aircon_usage', 0)}, "
+                f"WFH {user.get('num_wfh', 0)} days/week. "
                 f"Today's usage so far: {today_kwh:.2f} kWh (peak at {peak_hour}). "
                 f"Block average today: {block_avg_kwh:.2f} kWh "
                 f"({'above' if diff_block > 0 else 'below'} block average by {abs(diff_block):.2f} kWh). "
@@ -238,3 +278,146 @@ def ai_chat(req: ChatRequest):
     history = [{"role": m.role, "content": m.content} for m in req.history]
     reply = chat_with_coach(req.message, history, user_context)
     return ChatResponse(reply=reply)
+
+
+# ---- Anomaly Detection (simple aggregation) ----
+
+@router.get("/anomaly/{user_id}", response_model=AnomalyResponse)
+def get_anomaly(user_id: str):
+    """Compare today's usage to the user's 7-day average.
+    If today > 1.3x the 7-day avg, flag as anomaly."""
+    client = get_client()
+    user = _get_user(client, user_id)
+    household_id = user["household_id"]
+
+    today = date.today()
+    week_ago = today - timedelta(days=7)
+
+    rows = client.query(
+        """
+        SELECT
+            sumIf(Consumption, toDate(Timestamp) = {today:Date})                          AS today_kwh,
+            sum(Consumption) / 7                                                            AS avg_7d_kwh
+        FROM household_electricity_usage
+        WHERE HouseholdID = {hid:String}
+          AND toDate(Timestamp) BETWEEN {start:Date} AND {today:Date}
+        """,
+        parameters={"hid": household_id, "today": today.isoformat(), "start": week_ago.isoformat()},
+    ).result_rows
+
+    today_kwh = float(rows[0][0] or 0) if rows else 0
+    avg_7d = float(rows[0][1] or 0) if rows else 0
+    has_anomaly = (avg_7d > 0) and (today_kwh > avg_7d * 1.3)
+
+    if has_anomaly:
+        analysis = (
+            f"Your usage today ({today_kwh:.2f} kWh) is significantly higher than your "
+            f"7-day average ({avg_7d:.2f} kWh). Check if any high-power appliances "
+            f"were left running longer than usual."
+        )
+    elif avg_7d == 0:
+        analysis = "Not enough usage data to detect anomalies yet."
+    else:
+        analysis = (
+            f"Your usage today ({today_kwh:.2f} kWh) is within the normal range "
+            f"compared to your 7-day average ({avg_7d:.2f} kWh). Keep it up!"
+        )
+
+    return AnomalyResponse(
+        user_id=user_id,
+        has_anomaly=has_anomaly,
+        analysis=analysis,
+        generated_at=datetime.utcnow().isoformat(),
+    )
+
+
+# ---- Projections ----
+
+@router.get("/projections/{user_id}", response_model=ProjectionsResponse)
+def get_projections(user_id: str):
+    """Project the month-end bill based on current month usage so far."""
+    client = get_client()
+    user = _get_user(client, user_id)
+    household_id = user["household_id"]
+
+    today = date.today()
+    month_start = today.replace(day=1)
+    days_elapsed = max((today - month_start).days + 1, 1)
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_remaining = days_in_month - days_elapsed
+
+    rows = client.query(
+        "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp) BETWEEN {s:Date} AND {e:Date}",
+        parameters={"hid": household_id, "s": month_start.isoformat(), "e": today.isoformat()},
+    ).result_rows
+    month_so_far = float(rows[0][0] or 0) if rows else 0
+
+    avg_daily = month_so_far / days_elapsed
+    projected_total = avg_daily * days_in_month
+    tariff = 0.33  # SGD per kWh (approximate SP tariff)
+    projected_bill = round(projected_total * tariff, 2)
+
+    target_bill = None
+
+    return ProjectionsResponse(
+        user_id=user_id,
+        projected_bill_sgd=projected_bill,
+        projected_avg_daily_kwh=round(avg_daily, 2),
+        projected_total_kwh=round(projected_total, 2),
+        days_remaining=days_remaining,
+        target_bill_sgd=target_bill,
+        generated_at=datetime.utcnow().isoformat(),
+    )
+
+
+# ---- Household Benchmark ----
+
+@router.get("/benchmark/{user_id}", response_model=HouseholdBenchmarkResponse)
+def get_benchmark(user_id: str):
+    """Compare user's recent avg daily usage to others with the same flat type in the same district."""
+    client = get_client()
+    user = _get_user(client, user_id)
+    household_id = user["household_id"]
+
+    today = date.today()
+    week_ago = today - timedelta(days=7)
+
+    # User's average daily kWh over the past 7 days
+    user_rows = client.query(
+        "SELECT sum(Consumption) / 7 FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp) BETWEEN {s:Date} AND {e:Date}",
+        parameters={"hid": household_id, "s": week_ago.isoformat(), "e": today.isoformat()},
+    ).result_rows
+    user_avg = float(user_rows[0][0] or 0) if user_rows else 0
+
+    district = user["district"]
+
+    # Average daily kWh for users with same flat_type in the same district
+    profile_rows = client.query(
+        """
+        SELECT sum(e.Consumption) / countDistinct(e.HouseholdID) / 7
+        FROM household_electricity_usage e
+        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        WHERE hd.Flat_type = {ft:String}
+          AND hd.District = {dist:String}
+          AND toDate(e.Timestamp) BETWEEN {s:Date} AND {e_end:Date}
+        """,
+        parameters={
+            "ft": user["flat_type"],
+            "dist": district,
+            "s": week_ago.isoformat(),
+            "e_end": today.isoformat(),
+        },
+    ).result_rows
+    profile_avg = float(profile_rows[0][0] or 0) if profile_rows else 0
+
+    diff_pct = round(((user_avg - profile_avg) / profile_avg * 100) if profile_avg else 0, 1)
+
+    return HouseholdBenchmarkResponse(
+        user_id=user_id,
+        flat_type=user["flat_type"],
+        district=district,
+        user_avg_daily_kwh=round(user_avg, 2),
+        profile_avg_daily_kwh=round(profile_avg, 2),
+        difference_pct=diff_pct,
+        generated_at=datetime.utcnow().isoformat(),
+    )
