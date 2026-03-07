@@ -15,7 +15,7 @@ import AIInsightCard from "@/components/dashboard/AIInsightCard";
 import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
 import clsx from "clsx";
-import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis } from "@/lib/api";
+import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getOnboarding } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
   const [chartVariant, setChartVariant] = useState<ChartVariant>("per-day");
+  const [backendChecked, setBackendChecked] = useState(false);
 
   const variantSubtitle: Record<ChartVariant, string> = {
     "per-day": "Half-hourly usage today",
@@ -35,22 +36,54 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const uid = localStorage.getItem("powerblock_user_id");
-    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
-    if (!uid) { router.replace("/onboarding"); return; }
-    setUserId(uid);
-    setPostalCode(bid);
+    // Validate with backend first
+    getOnboarding()
+      .then((result) => {
+        const userId = String(result.user_id ?? result.UserID ?? "").trim();
+        const householdId = String(result.household_id ?? result.HouseholdID ?? "").trim();
+        const postalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
 
-    getBlockUsage(bid)
-      .then(setBlockUsage)
-      .catch(console.error)
-      .finally(() => setLoadingUsage(false));
+        if (householdId) {
+          localStorage.setItem("powerblock_household_id", householdId);
+        }
+        if (postalCode) {
+          localStorage.setItem("powerblock_postal_code", postalCode);
+        }
 
-    getLeaderboard("Yishun").then(setLeaderboard).catch(console.error);
-    getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
+        if (!userId) {
+          localStorage.removeItem("powerblock_user_id");
+          router.replace("/onboarding");
+          return;
+        }
+
+        localStorage.setItem("powerblock_user_id", userId);
+        setUserId(userId);
+        setPostalCode(postalCode || "752339");
+        setBackendChecked(true);
+
+        // Load dashboard data
+        const bid = postalCode || "752339";
+        getBlockUsage(bid)
+          .then(setBlockUsage)
+          .catch(console.error)
+          .finally(() => setLoadingUsage(false));
+
+        //getLeaderboard("Yishun").then(setLeaderboard).catch(console.error);
+        getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
+      })
+      .catch(() => {
+        localStorage.removeItem("powerblock_user_id");
+        router.replace("/onboarding");
+      });
   }, [router]);
 
-  if (!userId) return null;
+  if (!backendChecked || !userId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-sp-teal border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const today = new Date().toLocaleDateString("en-SG", {
     weekday: "long", day: "numeric", month: "long",
@@ -63,7 +96,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-sp-text-secondary">{today}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
-          <p className="text-xs text-sp-text-secondary">{postalCode}, Yishun</p>
+          <p className="text-xs text-sp-text-secondary">{postalCode}, Yishun</p> {/**To do: change location to db data instead of hardcoded yishun */}
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">
           <svg className="w-5 h-5 stroke-sp-teal" fill="none" viewBox="0 0 24 24" strokeWidth={2}>

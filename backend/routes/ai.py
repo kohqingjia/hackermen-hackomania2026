@@ -67,8 +67,8 @@ def _get_user(client, user_id: str) -> dict:
             hu.Has_WFH_days,
             hu.Num_WFH
         FROM details_per_household hd
-        LEFT JOIN input_per_household hu ON hd.UserID = hu.UserID
-        WHERE hd.UserID = {uid:String}
+        LEFT JOIN input_per_household hu ON toString(hd.UserID) = hu.UserID
+        WHERE toString(hd.UserID) = {uid:String}
         LIMIT 1
         """,
         parameters={"uid": user_id},
@@ -80,7 +80,12 @@ def _get_user(client, user_id: str) -> dict:
         "num_residents", "num_children", "num_elderly", "num_tenants", "aircon_usage",
         "num_aircons", "has_wfh_days", "num_wfh",
     ]
-    return dict(zip(cols, row[0]))
+    result = dict(zip(cols, row[0]))
+    # Cast UUID values to strings
+    result["household_id"] = str(result["household_id"])
+    result["postal_code"] = str(result["postal_code"])
+    result["district"] = str(result["district"])
+    return result
 
 
 @router.get("/insights", response_model=AIInsightResponse)
@@ -96,22 +101,23 @@ def get_insights(
 
     def daily_total(hid: str, d: date) -> float:
         rows = client.query(
-            """SELECT sum(Consumption) 
-            FROM household_electricity_usage 
-            WHERE HouseholdID={hid:String} 
-            AND toDate(Timestamp)={d:Date}
+            """SELECT sum(`Consumption(kWh)`)
+            FROM consumption_per_household_daily
+            WHERE HouseholdID={hid:String}
+            AND Day={d:Date}
             """,
             parameters={"hid": hid, "d": d.isoformat()},
         ).result_rows
         return float(rows[0][0] or 0)
 
+    # Getting the total of the block, grouping by postal code. in a day also.
     def block_total(postal_code: str, d: date) -> float:
         rows = client.query(
             """
-            SELECT avg(e.Consumption) * 48
-            FROM household_electricity_usage e
-            JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
-            WHERE hd.Postal_Code = {pc:String} AND toDate(e.Timestamp) = {d:Date}
+            SELECT sum(`Consumption(kWh)`)
+            FROM consumption_per_household_daily e
+            JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+            WHERE hd.PostalCode = {pc:String} AND e.Day = {d:Date}
             """,
             parameters={"pc": postal_code, "d": d.isoformat()},
         ).result_rows
@@ -119,7 +125,14 @@ def get_insights(
 
     def peak_hour(hid: str, d: date) -> str:
         rows = client.query(
-            "SELECT Timestamp FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY Consumption DESC LIMIT 1",
+            """
+            SELECT Timestamp
+            FROM consumption_per_household
+            WHERE HouseholdID={hid:String}
+            AND toDate(Timestamp)={d:Date}
+            ORDER BY `Consumption(kWh)` DESC
+            LIMIT 1
+            """,
             parameters={"hid": hid, "d": d.isoformat()},
         ).result_rows
         return rows[0][0].strftime("%H:%M") if rows else "20:00"
@@ -130,7 +143,7 @@ def get_insights(
     ph = peak_hour(household_id, target_date)
 
     result = generate_usage_insight(
-        user_id=user_id,
+        user_id=settings.user_id,
         user_kwh_total=user_kwh,
         peak_hour=ph,
         block_avg_kwh=block_avg,
@@ -157,7 +170,7 @@ def get_recommendations():
     today = get_app_date().isoformat()
 
     rows = client.query(
-        "SELECT Consumption FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY Timestamp ASC",
+        "SELECT `Consumption(kWh)` FROM consumption_per_household WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY Timestamp ASC",
         parameters={"hid": household_id, "d": today},
     ).result_rows
     kwh_by_slot = [float(r[0]) for r in rows] if rows else [0.3] * 48
@@ -191,7 +204,7 @@ def get_monthly_analysis():
 
     def month_total(hid: str, start: date, end: date) -> float:
         rows = client.query(
-            "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp) BETWEEN {s:Date} AND {e:Date}",
+            "SELECT sum(`Consumption(kWh)`) FROM consumption_per_household_monthly WHERE HouseholdID={hid:String} AND MonthStart BETWEEN {s:Date} AND {e:Date}",
             parameters={"hid": hid, "s": start.isoformat(), "e": end.isoformat()},
         ).result_rows
         return float(rows[0][0] or 0)
@@ -243,25 +256,25 @@ def ai_chat(req: ChatRequest):
                 return float(rows[0][0] or 0) if rows else 0.0
 
             today_kwh = _scalar(
-                "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
+                "SELECT sum(`Consumption(kWh)`) FROM consumption_per_household_daily WHERE HouseholdID={hid:String} AND Day={d:Date}",
                 {"hid": household_id, "d": today.isoformat()},
             )
             yesterday_kwh = _scalar(
-                "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
+                "SELECT sum(`Consumption(kWh)`) FROM consumption_per_household_daily WHERE HouseholdID={hid:String} AND Day={d:Date}",
                 {"hid": household_id, "d": yesterday.isoformat()},
             )
             block_avg_kwh = _scalar(
                 """
-                SELECT avg(e.Consumption)*48
-                FROM household_electricity_usage e
-                JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
-                WHERE hd.Postal_Code={pc:String} AND toDate(e.Timestamp)={d:Date}
+                SELECT avg(`Consumption(kWh)`)
+                FROM consumption_per_household_daily e
+                JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+                WHERE hd.PostalCode={pc:String} AND e.Day = {d:Date}
                 """,
                 {"pc": user["postal_code"], "d": today.isoformat()},
             )
             # peak hour
             peak_rows = db.query(
-                "SELECT Timestamp FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY Consumption DESC LIMIT 1",
+                "SELECT Timestamp FROM consumption_per_household WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date} ORDER BY `Consumption(kWh)` DESC LIMIT 1",
                 parameters={"hid": household_id, "d": today.isoformat()},
             ).result_rows
             peak_hour = peak_rows[0][0].strftime("%H:%M") if peak_rows else "N/A"
@@ -304,11 +317,11 @@ def get_anomaly():
     rows = client.query(
         """
         SELECT
-            sumIf(Consumption, toDate(Timestamp) = {today:Date})                          AS today_kwh,
-            sum(Consumption) / 7                                                            AS avg_7d_kwh
-        FROM household_electricity_usage
+            sumIf(`Consumption(kWh)`, Day = {today:Date})                          AS today_kwh,
+            sum(`Consumption(kWh)`) / 7                                                AS avg_7d_kwh
+        FROM consumption_per_household_daily
         WHERE HouseholdID = {hid:String}
-          AND toDate(Timestamp) BETWEEN {start:Date} AND {today:Date}
+          AND Day BETWEEN {start:Date} AND {today:Date}
         """,
         parameters={"hid": household_id, "today": today.isoformat(), "start": week_ago.isoformat()},
     ).result_rows
@@ -355,7 +368,7 @@ def get_projections():
     days_remaining = days_in_month - days_elapsed
 
     rows = client.query(
-        "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp) BETWEEN {s:Date} AND {e:Date}",
+        "SELECT sum(`Consumption(kWh)`) FROM consumption_per_household_daily WHERE HouseholdID={hid:String} AND Day BETWEEN {s:Date} AND {e:Date}",
         parameters={"hid": household_id, "s": month_start.isoformat(), "e": today.isoformat()},
     ).result_rows
     month_so_far = float(rows[0][0] or 0) if rows else 0
@@ -392,7 +405,7 @@ def get_benchmark():
 
     # User's average daily kWh over the past 7 days
     user_rows = client.query(
-        "SELECT sum(Consumption) / 7 FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp) BETWEEN {s:Date} AND {e:Date}",
+        "SELECT sum(`Consumption(kWh)`) / 7 FROM consumption_per_household_daily WHERE HouseholdID={hid:String} AND Day BETWEEN {s:Date} AND {e:Date}",
         parameters={"hid": household_id, "s": week_ago.isoformat(), "e": today.isoformat()},
     ).result_rows
     user_avg = float(user_rows[0][0] or 0) if user_rows else 0
@@ -402,12 +415,12 @@ def get_benchmark():
     # Average daily kWh for users with same flat_type in the same district
     profile_rows = client.query(
         """
-        SELECT sum(e.Consumption) / countDistinct(e.HouseholdID) / 7
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
+        SELECT sum(`Consumption(kWh)`) / countDistinct(e.HouseholdID) / 7
+        FROM consumption_per_household_daily e
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.Flat_type = {ft:String}
           AND hd.District = {dist:String}
-          AND toDate(e.Timestamp) BETWEEN {s:Date} AND {e_end:Date}
+          AND e.Day BETWEEN {s:Date} AND {e_end:Date}
         """,
         parameters={
             "ft": user["flat_type"],

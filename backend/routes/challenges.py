@@ -192,29 +192,29 @@ def complete_challenge(data: CompleteChallengeRequest):
 
 def _check_auto_challenges(client, user_id: str) -> bool:
     """Returns True if user is currently below block average today."""
-    # Get HouseholdID and Postal_Code from household_data
+    # Get HouseholdID and PostalCode from details_per_household
     hd_row = client.query(
-        "SELECT HouseholdID, Postal_Code FROM household_data WHERE UserID = {uid:String} LIMIT 1",
+        "SELECT toString(HouseholdID), PostalCode FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
         parameters={"uid": user_id},
     )
     if not hd_row.result_rows:
         return False
 
-    household_id = hd_row.result_rows[0][0]
+    household_id = str(hd_row.result_rows[0][0])
     postal_code = hd_row.result_rows[0][1]
     today = get_app_date().isoformat()
 
     user_avg = client.query(
-        "SELECT avg(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
+        "SELECT avg(`Consumption(kWh)`) FROM consumption_per_household WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
         parameters={"hid": household_id, "d": today},
     ).result_rows[0][0] or 0
 
     block_avg = client.query(
         """
-        SELECT avg(e.Consumption)
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
-        WHERE hd.Postal_Code = {pc:String} AND toDate(e.Timestamp) = {d:Date}
+        SELECT avg(`Consumption(kWh)`)
+        FROM consumption_per_household e
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+        WHERE hd.PostalCode = {pc:String} AND toDate(e.Timestamp) = {d:Date}
         """,
         parameters={"pc": postal_code, "d": today},
     ).result_rows[0][0] or 0
