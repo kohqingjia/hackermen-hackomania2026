@@ -3,7 +3,7 @@
 /**
  * Dashboard — main home screen
  * Shows: half-hourly usage chart, AI insight, bill tracker, block wars widget
- * Data: /api/usage, /api/ai/insights, /api/ai/analyze, /api/leaderboard
+ * Data: /api/usage, /api/ai/insights, /api/ai/analyze, 
  */
 
 import { useEffect, useState } from "react";
@@ -14,16 +14,17 @@ import BlockStats from "@/components/block/BlockStats";
 import AIInsightCard from "@/components/dashboard/AIInsightCard";
 import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
+import { EnergyBuilding } from "@/components/dashboard/BuildingGraph";
 import clsx from "clsx";
 import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getOnboarding } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
+import StatBox from "@/components/shared/StatBox";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [postalCode, setPostalCode] = useState("752339");
   const [blockUsage, setBlockUsage] = useState<BlockUsageResponse | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
   const [chartVariant, setChartVariant] = useState<ChartVariant>("per-day");
@@ -39,6 +40,7 @@ export default function DashboardPage() {
     // Validate with backend first
     getOnboarding()
       .then((result) => {
+        console.log(result);
         const userId = String(result.user_id ?? result.UserID ?? "").trim();
         const householdId = String(result.household_id ?? result.HouseholdID ?? "").trim();
         const postalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
@@ -52,6 +54,9 @@ export default function DashboardPage() {
 
         if (!userId) {
           localStorage.removeItem("powerblock_user_id");
+          localStorage.removeItem("powerblock_postal_code");
+          localStorage.removeItem("powerblock_household_id");
+          localStorage.removeItem("powerblock_target_bill");
           router.replace("/onboarding");
           return;
         }
@@ -68,11 +73,13 @@ export default function DashboardPage() {
           .catch(console.error)
           .finally(() => setLoadingUsage(false));
 
-        //getLeaderboard("Yishun").then(setLeaderboard).catch(console.error);
         getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
       })
       .catch(() => {
         localStorage.removeItem("powerblock_user_id");
+        localStorage.removeItem("powerblock_postal_code");
+        localStorage.removeItem("powerblock_household_id");
+        localStorage.removeItem("powerblock_target_bill");
         router.replace("/onboarding");
       });
   }, [router]);
@@ -96,7 +103,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-sp-text-secondary">{today}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
-          <p className="text-xs text-sp-text-secondary">{postalCode}, Yishun</p> {/**To do: change location to db data instead of hardcoded yishun */}
+          <p className="text-xs text-sp-text-secondary">{postalCode}, Sembawang</p> {/**To do: change location to db data instead of hardcoded yishun */}
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">
           <svg className="w-5 h-5 stroke-sp-teal" fill="none" viewBox="0 0 24 24" strokeWidth={2}>
@@ -104,6 +111,35 @@ export default function DashboardPage() {
           </svg>
         </div>
       </div>
+
+            {/* Below / Above block average analysis */}
+      {loadingUsage ? (
+        <LoadingCard />
+      ) : blockUsage ? (
+        <div>
+          <BlockStats data={blockUsage} />
+          <StatBox label="Context" value="Your usage is equal to..." sub="" />
+        </div>  
+      ) : null}
+
+      {/* Energy Building Visualisation */}
+      {loadingUsage ? (
+        <LoadingCard />
+      ) : blockUsage ? (
+        <Card>
+          <SectionHeader
+            title="Your Block at a Glance"
+            subtitle="Live usage vs block average"
+          />
+          <EnergyBuilding
+            userUsage={blockUsage.user_kwh}
+            blockAverage={blockUsage.block_avg_kwh}
+            threshold={Math.max(blockUsage.user_kwh, blockUsage.block_avg_kwh) * 1.3 || 1}
+            blockName={`BLK ${postalCode}`}
+            timeLabel="Today's total usage"
+          />
+        </Card>
+      ) : null}
 
       {/* Usage Comparison Chart */}
       <Card>
@@ -149,12 +185,6 @@ export default function DashboardPage() {
         )}
       </Card>
 
-      {/* Below / Above block average analysis */}
-      {loadingUsage ? (
-        <LoadingCard />
-      ) : blockUsage ? (
-        <BlockStats data={blockUsage} />
-      ) : null}
 
       {/* AI Insight */}
       <AIInsightCard userId={userId} />

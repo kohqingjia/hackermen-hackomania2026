@@ -9,6 +9,7 @@ Functions:
 
 from openai import OpenAI
 from config import settings
+import json
 
 client = OpenAI(api_key=settings.openai_api_key)
 
@@ -30,7 +31,7 @@ def generate_usage_insight(
     diff_from_block = user_kwh_total - block_avg_kwh
     diff_from_yesterday = user_kwh_total - prev_day_kwh
 
-    prompt = f"""You are an energy coach for a Singapore HDB household.
+    prompt = f"""You are an energy coach for Singapore HDB household. You generate insights on a household's daily energy consumption pattern, and give one actionable tip to save energy tonight.
 
 User profile: {flat_type} flat, aircon usage level {aircon_usage}/3.
 Today's total usage: {user_kwh_total:.2f} kWh
@@ -51,7 +52,7 @@ Respond in JSON with keys: insight, tip, comparison. Keep each under 30 words. U
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
-        max_tokens=300,
+        max_completion_tokens=300,
         temperature=0.7,
     )
 
@@ -65,6 +66,10 @@ def generate_recommendations(
     num_wfh: int = 0,
     aircon_usage: int = 0,
     num_residents: int = 0,
+    num_aircons: int = 0,
+    num_children: int = 0,
+    num_elderly: int = 0,
+    num_tenants: int = 0
 ) -> list[dict]:
     """
     Returns list of: { title, action, estimated_saving_kwh, estimated_saving_sgd, time_of_day, priority }
@@ -73,9 +78,9 @@ def generate_recommendations(
     peak_slots = sorted(range(48), key=lambda i: user_kwh_by_slot[i], reverse=True)[:6]
     peak_hours = [f"{s//2:02d}:{(s%2)*30:02d}" for s in peak_slots]
 
-    prompt = f"""You are an AI energy advisor for a Singapore HDB resident.
+    prompt = f"""You are an AI energy advisor for Singapore HDB residents.
 
-Household: {flat_type} flat, {num_residents} residents, aircon usage level {aircon_usage}/3, WFH {num_wfh} days/week.
+Household: {flat_type} flat, {num_residents} residents, aircon usage level {aircon_usage}/3, WFH {num_wfh} days/week, {num_aircons} air conditioners, {num_children} children, {num_elderly} elderly individuals, {num_tenants} tenants.
 Top usage hours today: {', '.join(peak_hours)}.
 
 Generate 3 personalised energy-saving recommendations.
@@ -89,49 +94,60 @@ Each must include:
 
 Respond as JSON with key "recommendations" containing the array. Use Singapore context."""
 
-    import json
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
-        max_tokens=500,
-        temperature=0.7,
+        max_completion_tokens=1000,
+        temperature=0.3,
     )
 
-    result = json.loads(response.choices[0].message.content)
-    return result.get("recommendations", [])
+    content = response.choices[0].message.content
+
+    if not content:
+        return []
+
+    try:
+        result = json.loads(content)
+        return result.get("recommendations", [])
+    except json.JSONDecodeError:
+        print("Invalid JSON:", content)
+        return []
 
 
 def generate_monthly_analysis(
     current_month_kwh: float,
     previous_month_kwh: float,
-    budget_sgd: float,
-    target_reduction_pct: float,
+    target_bill: float,
+    projected_bill: float,
     flat_type: str,
 ) -> str:
     """Returns a short narrative paragraph for the monthly analysis view."""
-
+    # Current month (but not the full month), previous month, target bill
     current_bill = current_month_kwh * 0.33
-    change_pct = ((current_month_kwh - previous_month_kwh) / previous_month_kwh * 100) if previous_month_kwh else 0
-    on_track = change_pct <= -target_reduction_pct
+    previous_bill = previous_month_kwh * 0.33
+    change_pct = round(((current_month_kwh - previous_month_kwh) / previous_month_kwh * 100) if previous_month_kwh else 0, 1)
+    savings_sgd = round(previous_bill - current_bill, 2)
+    on_track = (projected_bill <= target_bill) if target_bill else None
 
-    prompt = f"""You are a friendly energy coach for a Singapore HDB resident.
+    prompt = f"""You are a helpful energy coach for a Singapore HDB resident.
 
 Household type: {flat_type}
 This month: {current_month_kwh:.1f} kWh (est. S${current_bill:.2f})
 Last month: {previous_month_kwh:.1f} kWh
 Change: {change_pct:+.1f}%
-Target: -{target_reduction_pct:.0f}% reduction
-Budget: S${budget_sgd:.2f}/month
+Savings from last month: S${savings_sgd:.2f}
+Projected bill for this month: S${projected_bill:.2f}
+Target: S${target_bill:.2f}/month
 On track: {on_track}
 
-Write a 2-sentence friendly analysis. Acknowledge progress or give encouragement.
+Write a 2-sentence friendly analysis. Acknowledge progress or give encouragement. If their projections exceed their target, urge them to take action and suggest they check the recommendations tab.
 Mention if they're on track for their target. Keep it under 50 words total."""
 
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=120,
+        max_completion_tokens=120,
         temperature=0.7,
     )
 
@@ -159,7 +175,7 @@ def chat_with_coach(
     response = client.chat.completions.create(
         model=MODEL,
         messages=messages,
-        max_tokens=200,
-        temperature=0.7,
+        max_completion_tokens=200,
+        temperature=0.8,
     )
     return response.choices[0].message.content.strip()

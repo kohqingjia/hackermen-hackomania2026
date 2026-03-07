@@ -106,7 +106,7 @@ class LeaderboardEntry(BaseModel):
 
 class WeeklyTopBlock(BaseModel):
     rank: int
-    block_id: str
+    postal_code: str
     avg_kwh: float
 
 
@@ -196,9 +196,10 @@ class AIMonthlyAnalysisResponse(BaseModel):
     current_month_kwh: float
     previous_month_kwh: float
     change_pct: float
-    on_track_for_target: bool
+    savings_sgd: float
     projected_bill_sgd: float
-    budget_sgd: float
+    target_bill_sgd: Optional[float] = None
+    on_track_for_target: Optional[bool] = None
     narrative: str
     generated_at: str
 
