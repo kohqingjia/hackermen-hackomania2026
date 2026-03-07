@@ -51,21 +51,9 @@ export default function MapPage() {
     setUserPostalCode(bid);
 
     async function loadMapData() {
-      const withDistrictComparison = (blocks: BlockMapEntry[]): BlockMapEntry[] => {
-        if (!blocks.length) return blocks;
-        const districtAvg = blocks.reduce((sum, block) => sum + block.avg_kwh, 0) / blocks.length;
-        return blocks.map((block) => ({
-          ...block,
-          reduction_pct: districtAvg > 0
-            ? Number((((districtAvg - block.avg_kwh) / districtAvg) * 100).toFixed(1))
-            : 0,
-        }));
-      };
-
       const applyData = (data: MapResponse, isFallback = false) => {
-        const blocks = withDistrictComparison(data.blocks);
         setUsingFallback(isFallback);
-        setMapData({ ...data, blocks });
+        setMapData(data);
         setSelected(null);
       };
 
