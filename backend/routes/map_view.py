@@ -37,44 +37,48 @@ def get_map(
 ):
     client = get_client()
     target_date = date.fromisoformat(query_date) if query_date else get_app_date()
-    previous_week_date = target_date - timedelta(days=7)
 
     # Resolve friendly name → DB district code (e.g. "Yishun" → "D27")
     db_district = DISTRICT_ALIAS.get(district.lower(), district)
 
-    # Current day avg per postal code
+    # Week window (Mon–Sun) containing the target date
+    week_start = target_date - timedelta(days=target_date.weekday())
+    week_end = week_start + timedelta(days=6)
+
+    # Weekly avg per postal code
     current_rows = client.query(
         """
-        SELECT hd.PostalCode, avg(`Consumption(kWh)`) * 48 AS daily_avg_kwh
-        FROM consumption_per_household e
+        SELECT hd.PostalCode, avg(`Consumption(kWh)`) AS weekly_avg_kwh
+        FROM consumption_per_household_daily e
         JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
         WHERE hd.District = {dist:String}
-          AND toDate(e.Timestamp) = {d:Date}
+          AND e.Day BETWEEN {ws:Date} AND {we:Date}
         GROUP BY hd.PostalCode
-        ORDER BY daily_avg_kwh ASC
+        ORDER BY weekly_avg_kwh ASC
         """,
-        parameters={"dist": db_district, "d": target_date.isoformat()},
+        parameters={"dist": db_district, "ws": week_start.isoformat(), "we": week_end.isoformat()},
     ).result_rows
 
-    # Previous week average (7 days ago) for comparison
-    previous_week_rows = client.query(
+    # District average = average of each block's weekly average consumption
+    district_avg_row = client.query(
         """
-        SELECT hd.PostalCode, avg(`Consumption(kWh)`) * 48 AS daily_avg_kwh
-        FROM consumption_per_household e
-        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
-        WHERE hd.District = {dist:String}
-          AND toDate(e.Timestamp) = {bd:Date}
-        GROUP BY hd.PostalCode
+        SELECT avg(block_avg) AS district_avg
+        FROM (
+            SELECT hd.PostalCode, avg(`Consumption(kWh)`) AS block_avg
+            FROM consumption_per_household_daily e
+            JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+            WHERE hd.District = {dist:String}
+              AND e.Day BETWEEN {ws:Date} AND {we:Date}
+            GROUP BY hd.PostalCode
+        )
         """,
-        parameters={"dist": db_district, "bd": previous_week_date.isoformat()},
+        parameters={"dist": db_district, "ws": week_start.isoformat(), "we": week_end.isoformat()},
     ).result_rows
-
-    previous_week_map = {r[0]: r[1] for r in previous_week_rows}
+    district_avg_kwh = round(district_avg_row[0][0], 3) if district_avg_row and district_avg_row[0][0] else 0.0
 
     entries = []
     for rank, (postal_code, avg_kwh) in enumerate(current_rows, start=1):
-        previous_avg = previous_week_map.get(postal_code, avg_kwh)
-        reduction_pct = round(((previous_avg - avg_kwh) / previous_avg * 100) if previous_avg else 0, 1)
+        reduction_pct = round(((district_avg_kwh - avg_kwh) / district_avg_kwh * 100) if district_avg_kwh else 0, 1)
         lat, lng = POSTAL_COORDS.get(postal_code, (1.427, 103.836))
         # Try OneMap for real coords, fall back to hardcoded
         onemap = geocode_postal(postal_code)

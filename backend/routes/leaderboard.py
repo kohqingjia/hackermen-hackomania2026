@@ -74,7 +74,7 @@ def get_leaderboard(
 
     prev_map = {r[0]: r[1] for r in prev}
 
-    # District average = average of each block's average consumption
+    # District average = average of each block's average consumption (via SQL)
     district_avg_row = client.query(
         """
         SELECT avg(block_avg) AS district_avg
