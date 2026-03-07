@@ -66,6 +66,9 @@ export default function OnboardingForm() {
       const res = await submitOnboarding(dataToSend);
       localStorage.setItem("powerblock_user_id", res.user_id);
       localStorage.setItem("powerblock_postal_code", form.postal_code);
+      if (form.target_bill != null) {
+        localStorage.setItem("powerblock_target_bill", String(form.target_bill));
+      }
       router.push("/dashboard");
     } catch (e) {
       console.error(e);
@@ -200,31 +203,34 @@ export default function OnboardingForm() {
     </StepWrapper>,
 
     // Step 4 — Target bill
-    <StepWrapper key="target" title="Set your target bill" subtitle="We'll track your progress against this goal">
+    <StepWrapper key="target" title="Set your target bill" subtitle="We'll help you stay on track each month">
       <div className="space-y-4">
         <div>
-          <label className="text-sm text-sp-text-secondary mb-1 block">Monthly electricity bill target (S$)</label>
-          <input
-            type="number"
-            min={0}
-            step={5}
-            placeholder="e.g. 80"
-            value={form.target_bill ?? ""}
-            onChange={(e) => update("target_bill", e.target.value ? parseFloat(e.target.value) : undefined)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
-          />
-          <p className="text-xs text-sp-text-secondary mt-2">Leave blank to skip — you can set this later.</p>
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {[50, 80, 100, 150].map((v) => (
-            <SelectButton
-              key={v}
-              label={`S$${v}`}
-              selected={form.target_bill === v}
-              onClick={() => update("target_bill", v)}
+          <label className="text-sm text-sp-text-secondary mb-2 block">Monthly electricity bill target ($)</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sp-text-secondary text-sm font-medium">$</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              placeholder="e.g. 80"
+              value={form.target_bill ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                update("target_bill", v === "" ? undefined : parseInt(v) || 0);
+              }}
+              className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
             />
-          ))}
+          </div>
+          <p className="text-xs text-sp-text-secondary mt-2">Leave blank to skip — you can always set this later.</p>
         </div>
+
+        {form.target_bill != null && form.target_bill > 0 && (
+          <div className="bg-sp-chart/40 rounded-xl p-4 text-center">
+            <p className="text-sp-teal font-semibold text-lg">${form.target_bill}/mo</p>
+            <p className="text-xs text-sp-text-secondary mt-1">We'll notify you when you're approaching this limit</p>
+          </div>
+        )}
       </div>
     </StepWrapper>,
   ];

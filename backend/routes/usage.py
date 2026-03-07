@@ -7,11 +7,12 @@ GET /api/usage/{user_id}?date=YYYY-MM-DD
 """
 
 from datetime import date, datetime
+from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
-from config import settings
 from models.schemas import UsageResponse, HalfHourlyPoint
 from utils.datetime_helper import get_app_date
+from utils.user_resolver import resolve_user_id
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
 
@@ -30,9 +31,11 @@ def _get_household_id(client, user_id: str) -> str:
 @router.get("/", response_model=UsageResponse)
 def get_usage(
     query_date: str = Query(default=None, alias="date"),
+    user_id: Optional[str] = Query(default=None),
 ):
     client = get_client()
-    household_id = _get_household_id(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    household_id = _get_household_id(client, effective_uid)
 
     target_date = date.fromisoformat(query_date) if query_date else get_app_date()
     date_str = target_date.isoformat()
@@ -64,7 +67,7 @@ def get_usage(
     peak_point = max(data, key=lambda p: p.electricity_kwh)
 
     return UsageResponse(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         date=date_str,
         data=data,
         total_kwh=total_kwh,

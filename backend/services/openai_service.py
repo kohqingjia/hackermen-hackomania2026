@@ -9,10 +9,11 @@ Functions:
 
 from openai import OpenAI
 from config import settings
+import json
 
 client = OpenAI(api_key=settings.openai_api_key)
 
-MODEL = "gpt-5"
+MODEL = "gpt-4o"
 
 
 def generate_usage_insight(
@@ -51,7 +52,7 @@ Respond in JSON with keys: insight, tip, comparison. Keep each under 30 words. U
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
-        max_tokens=300,
+        max_completion_tokens=300,
         temperature=0.7,
     )
 
@@ -93,17 +94,25 @@ Each must include:
 
 Respond as JSON with key "recommendations" containing the array. Use Singapore context."""
 
-    import json
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
-        max_tokens=500,
-        temperature=0.7,
+        max_completion_tokens=1000,
+        temperature=0.3,
     )
 
-    result = json.loads(response.choices[0].message.content)
-    return result.get("recommendations", [])
+    content = response.choices[0].message.content
+
+    if not content:
+        return []
+
+    try:
+        result = json.loads(content)
+        return result.get("recommendations", [])
+    except json.JSONDecodeError:
+        print("Invalid JSON:", content)
+        return []
 
 
 def generate_monthly_analysis(
@@ -138,8 +147,8 @@ Mention if they're on track for their target. Keep it under 50 words total."""
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=120,
-        temperature=0.8,
+        max_completion_tokens=120,
+        temperature=0.7,
     )
 
     return response.choices[0].message.content.strip()
@@ -166,7 +175,7 @@ def chat_with_coach(
     response = client.chat.completions.create(
         model=MODEL,
         messages=messages,
-        max_tokens=200,
-        temperature=0.7,
+        max_completion_tokens=200,
+        temperature=0.8,
     )
     return response.choices[0].message.content.strip()
