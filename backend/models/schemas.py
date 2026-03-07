@@ -25,6 +25,7 @@ class OnboardingRequest(BaseModel):
     num_aircons: int = 1
     has_wfh_days: list[str] = []                # e.g. ["Monday","Wednesday"]
     num_wfh: int = 0                            # 0-7
+    target_bill: Optional[float] = None         # monthly target bill in SGD
 
 
 class OnboardingResponse(BaseModel):

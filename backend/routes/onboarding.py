@@ -81,11 +81,13 @@ def create_onboarding(data: OnboardingRequest):
             data.num_aircons,
             str(data.has_wfh_days),
             data.num_wfh,
+            data.target_bill or 0,
         ]],
         column_names=[
             "UserID", "HouseholdID", "Floor_area_sqm", "Num_residents",
             "Num_children", "Num_elderly", "Num_tenants",
             "Aircon_usage", "Num_Aircons", "Has_WFH_days", "Num_WFH",
+            "Target_bill",
         ],
     )
 

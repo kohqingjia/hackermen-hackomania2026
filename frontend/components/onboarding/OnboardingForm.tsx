@@ -27,6 +27,7 @@ export default function OnboardingForm() {
     num_residents: 1,
     aircon_usage: 1,
     num_wfh: 0,
+    target_bill: undefined,
   });
 
   useEffect(() => {
@@ -197,6 +198,35 @@ export default function OnboardingForm() {
         </div>
       </div>
     </StepWrapper>,
+
+    // Step 4 — Target bill
+    <StepWrapper key="target" title="Set your target bill" subtitle="We'll track your progress against this goal">
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm text-sp-text-secondary mb-1 block">Monthly electricity bill target (S$)</label>
+          <input
+            type="number"
+            min={0}
+            step={5}
+            placeholder="e.g. 80"
+            value={form.target_bill ?? ""}
+            onChange={(e) => update("target_bill", e.target.value ? parseFloat(e.target.value) : undefined)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
+          />
+          <p className="text-xs text-sp-text-secondary mt-2">Leave blank to skip — you can set this later.</p>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[50, 80, 100, 150].map((v) => (
+            <SelectButton
+              key={v}
+              label={`S$${v}`}
+              selected={form.target_bill === v}
+              onClick={() => update("target_bill", v)}
+            />
+          ))}
+        </div>
+      </div>
+    </StepWrapper>,
   ];
 
   const isLastStep = step === steps.length - 1;
@@ -204,7 +234,8 @@ export default function OnboardingForm() {
     step === 0 ||
     (step === 1 && form.flat_type) ||
     step === 2 ||
-    step === 3;
+    step === 3 ||
+    step === 4;
 
   return (
     <div className="px-5 py-6 page-enter">
