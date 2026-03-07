@@ -35,19 +35,19 @@ export default function LeaderboardPage() {
 
   const history = data?.weekly_top3_history ?? [];
   const selectedHistory = history[historyIndex];
-  const userInTop3 = (selectedHistory?.winners ?? []).some((winner) => winner.block_id === userBlockId);
-  const userBlockKwh = selectedHistory?.block_avg_kwh_by_block?.[userBlockId];
+  const userInTop3 = (selectedHistory?.winners ?? []).some((winner) => winner.postal_code === userPostalCode);
+  const userBlockKwh = selectedHistory?.block_avg_kwh_by_block?.[userPostalCode];
   const displayRows = [
     ...(selectedHistory?.winners ?? []).map((winner) => ({
       key: `${selectedHistory?.week_start}-${winner.rank}`,
-      blockId: winner.block_id,
+      blockId: winner.postal_code,
       avgKwh: winner.avg_kwh,
       rank: winner.rank,
-      isUser: winner.block_id === userBlockId,
+      isUser: winner.postal_code === userPostalCode,
     })),
     ...(!userInTop3 && userBlockKwh !== undefined ? [{
-      key: `${selectedHistory?.week_start}-${userBlockId}`,
-      blockId: userBlockId,
+      key: `${selectedHistory?.week_start}-${userPostalCode}`,
+      blockId: userPostalCode,
       avgKwh: userBlockKwh,
       rank: null,
       isUser: true,

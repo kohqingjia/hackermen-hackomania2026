@@ -4,11 +4,11 @@ import { useEffect, useRef } from "react";
 import type { BlockMapEntry } from "@/lib/types";
 
 const BLOCK_COORDS: Record<string, [number, number]> = {
-  BLK402: [1.4295, 103.8337],
-  BLK403: [1.4312, 103.8352],
-  BLK404: [1.4280, 103.8368],
-  BLK405: [1.4265, 103.8355],
-  BLK406: [1.4300, 103.8320],
+  "752339": [1.4295, 103.8337],
+  "752341": [1.4312, 103.8352],
+  "750341": [1.4280, 103.8368],
+  "751339": [1.4265, 103.8355],
+  "750331": [1.4300, 103.8320],
 };
 
 function markerFill(pct: number): string {
@@ -44,11 +44,11 @@ function createPinIcon(L: any, block: BlockMapEntry, isUser: boolean) {
 
 interface Props {
   blocks: BlockMapEntry[];
-  userBlockId?: string;
+  userPostalCode?: string;
   onBlockSelect?: (block: BlockMapEntry) => void;
 }
 
-export default function OneMapLeaflet({ blocks, userBlockId, onBlockSelect }: Props) {
+export default function OneMapLeaflet({ blocks, userPostalCode, onBlockSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
 
@@ -74,9 +74,9 @@ export default function OneMapLeaflet({ blocks, userBlockId, onBlockSelect }: Pr
       }).addTo(map);
 
       blocks.forEach((block) => {
-        const coords = BLOCK_COORDS[block.block_id];
+        const coords = BLOCK_COORDS[block.postal_code];
         if (!coords) return;
-        const isUser = block.block_id === userBlockId;
+        const isUser = block.postal_code === userPostalCode;
 
         const marker = L.marker(coords, {
           icon: createPinIcon(L, block, isUser),
@@ -84,7 +84,7 @@ export default function OneMapLeaflet({ blocks, userBlockId, onBlockSelect }: Pr
 
         marker.bindPopup(`
           <div style="min-width:120px;font-family:sans-serif;line-height:1.6">
-            <p style="font-weight:700;margin:0 0 2px">${block.block_id}${isUser ? " 📍 You" : ""}</p>
+            <p style="font-weight:700;margin:0 0 2px">${block.postal_code}${isUser ? " 📍 You" : ""}</p>
             <p style="color:#16a34a;font-weight:600;margin:0 0 1px">-${block.reduction_pct}% vs avg</p>
             <p style="color:#6b7280;font-size:11px;margin:0">${block.avg_kwh.toFixed(2)} kWh/day · Rank #${block.rank}</p>
           </div>

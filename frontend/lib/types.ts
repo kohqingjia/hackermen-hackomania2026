@@ -98,7 +98,7 @@ export interface LeaderboardEntry {
 
 export interface WeeklyTopBlock {
   rank: number;
-  block_id: string;
+  postal_code: string;
   avg_kwh: number;
 }
 
