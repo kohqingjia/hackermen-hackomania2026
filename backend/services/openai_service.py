@@ -137,3 +137,30 @@ Mention if they're on track for their target. Keep it under 50 words total."""
     )
 
     return response.choices[0].message.content.strip()
+
+
+def chat_with_coach(
+    user_message: str,
+    history: list[dict],
+    user_context: str = "",
+) -> str:
+    """Free-form energy coach chat. Returns plain-text reply."""
+    system = (
+        "You are PowerBlock AI Coach, a friendly energy advisor for Singapore HDB residents. "
+        "Help users understand their electricity usage, save energy, and earn challenge points. "
+        "Keep replies concise (under 80 words). Use Singapore context (HDB, aircon, SP Group, kWh, SGD)."
+    )
+    if user_context:
+        system += f" {user_context}"
+
+    messages = [{"role": "system", "content": system}]
+    messages.extend(history[-10:])  # keep last 10 turns for context
+    messages.append({"role": "user", "content": user_message})
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        max_tokens=200,
+        temperature=0.7,
+    )
+    return response.choices[0].message.content.strip()

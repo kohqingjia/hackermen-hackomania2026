@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import NavBar from "@/components/shared/NavBar";
+import ChatWidget from "@/components/shared/ChatWidget";
 
 export const metadata: Metadata = {
   title: "PowerBlock",
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <NavBar />
+        <ChatWidget />
       </body>
     </html>
   );

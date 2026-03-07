@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     clickhouse_user: str = "default"
     clickhouse_password: str = ""
     clickhouse_database: str = "powerblock"
+    use_mock_data: bool = True
 
     class Config:
         env_file = ".env"

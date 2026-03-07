@@ -15,7 +15,16 @@ _client = None
 
 def get_client():
     global _client
-    if _client is None:
+    if _client is not None:
+        return _client
+
+    if settings.use_mock_data:
+        from database.mock_db import MockClient
+        _client = MockClient()
+        print("[DB] Using MockClient (USE_MOCK_DATA=true)")
+        return _client
+
+    try:
         _client = clickhouse_connect.get_client(
             host=settings.clickhouse_host,
             port=settings.clickhouse_port,
@@ -23,6 +32,13 @@ def get_client():
             password=settings.clickhouse_password,
             database=settings.clickhouse_database,
         )
+        _client.command("SELECT 1")
+        print(f"[DB] Connected to ClickHouse at {settings.clickhouse_host}:{settings.clickhouse_port}")
+    except Exception as exc:
+        print(f"[DB] ClickHouse unavailable ({exc}), falling back to MockClient")
+        from database.mock_db import MockClient
+        _client = MockClient()
+
     return _client
 
 

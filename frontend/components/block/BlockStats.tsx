@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import type { BlockUsageResponse } from "@/lib/types";
+import StatBox from "@/components/shared/StatBox";
 
 interface BlockStatsProps {
   data: BlockUsageResponse;
@@ -41,19 +42,6 @@ export default function BlockStats({ data }: BlockStatsProps) {
         <StatBox label="Your usage" value={`${data.user_kwh.toFixed(2)} kWh`} sub="today" />
         <StatBox label="Block average" value={`${data.block_avg_kwh.toFixed(2)} kWh`} sub="today" highlight />
       </div>
-    </div>
-  );
-}
-
-function StatBox({ label, value, sub, highlight }: { label: string; value: string; sub: string; highlight?: boolean }) {
-  return (
-    <div className={clsx(
-      "rounded-2xl p-3 border",
-      highlight ? "bg-sp-chart border-sp-mint" : "bg-white border-gray-100"
-    )}>
-      <p className="text-[10px] font-medium text-sp-text-secondary uppercase tracking-wide">{label}</p>
-      <p className="text-xl font-bold text-sp-text mt-0.5">{value}</p>
-      <p className="text-[10px] text-sp-text-secondary">{sub}</p>
     </div>
   );
 }
