@@ -9,18 +9,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Card, { SectionHeader, LoadingCard } from "@/components/shared/Card";
-import UsageChart from "@/components/dashboard/UsageChart";
+import BlockComparisonChart from "@/components/block/BlockComparisonChart";
+import BlockStats from "@/components/block/BlockStats";
 import AIInsightCard from "@/components/dashboard/AIInsightCard";
 import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
-import { getUsage, getLeaderboard, getAIMonthlyAnalysis } from "@/lib/api";
-import type { UsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
+import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis } from "@/lib/api";
+import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [blockId, setBlockId] = useState("BLK404");
-  const [usage, setUsage] = useState<UsageResponse | null>(null);
+  const [blockUsage, setBlockUsage] = useState<BlockUsageResponse | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
@@ -32,8 +33,8 @@ export default function DashboardPage() {
     setUserId(uid);
     setBlockId(bid);
 
-    getUsage(uid)
-      .then(setUsage)
+    getBlockUsage(bid, uid)
+      .then(setBlockUsage)
       .catch(console.error)
       .finally(() => setLoadingUsage(false));
 
@@ -63,37 +64,33 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Today's Usage Chart */}
+      {/* Usage Comparison Chart */}
       <Card>
         <SectionHeader
-          title="Today's Usage"
-          subtitle={usage ? `${usage.total_kwh.toFixed(2)} kWh total` : "Loading..."}
+          title="Usage Comparison"
+          subtitle="Your usage vs block average today"
         />
         {loadingUsage ? (
           <div className="h-44 animate-pulse bg-sp-chart rounded-xl" />
-        ) : usage ? (
-          <UsageChart data={usage.data} peakHour={usage.peak_hour} />
+        ) : blockUsage ? (
+          <BlockComparisonChart
+            userSeries={blockUsage.hourly_user}
+            blockSeries={blockUsage.hourly_block_avg}
+          />
         ) : (
           <p className="text-sm text-sp-text-secondary text-center py-8">No data available today</p>
         )}
       </Card>
 
+      {/* Below / Above block average analysis */}
+      {loadingUsage ? (
+        <LoadingCard />
+      ) : blockUsage ? (
+        <BlockStats data={blockUsage} />
+      ) : null}
+
       {/* AI Insight */}
       <AIInsightCard userId={userId} />
-
-      {/* Bill Tracker */}
-      <BillTracker data={monthly} loading={!monthly} />
-
-      {/* Block Wars mini widget */}
-      {leaderboard ? (
-        <BlockWarsWidget
-          userBlockId={blockId}
-          entries={leaderboard.entries}
-          resetsInDays={leaderboard.resets_in_days}
-        />
-      ) : (
-        <LoadingCard />
-      )}
     </div>
   );
 }
