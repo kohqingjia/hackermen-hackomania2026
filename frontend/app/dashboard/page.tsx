@@ -40,6 +40,7 @@ export default function DashboardPage() {
     // Validate with backend first
     getOnboarding()
       .then((result) => {
+        console.log(result);
         const userId = String(result.user_id ?? result.UserID ?? "").trim();
         const householdId = String(result.household_id ?? result.HouseholdID ?? "").trim();
         const postalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
@@ -53,6 +54,9 @@ export default function DashboardPage() {
 
         if (!userId) {
           localStorage.removeItem("powerblock_user_id");
+          localStorage.removeItem("powerblock_postal_code");
+          localStorage.removeItem("powerblock_household_id");
+          localStorage.removeItem("powerblock_target_bill");
           router.replace("/onboarding");
           return;
         }
@@ -73,6 +77,9 @@ export default function DashboardPage() {
       })
       .catch(() => {
         localStorage.removeItem("powerblock_user_id");
+        localStorage.removeItem("powerblock_postal_code");
+        localStorage.removeItem("powerblock_household_id");
+        localStorage.removeItem("powerblock_target_bill");
         router.replace("/onboarding");
       });
   }, [router]);
@@ -96,7 +103,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-sp-text-secondary">{today}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
-          <p className="text-xs text-sp-text-secondary">{postalCode}, Yishun</p> {/**To do: change location to db data instead of hardcoded yishun */}
+          <p className="text-xs text-sp-text-secondary">{postalCode}, Sembawang</p> {/**To do: change location to db data instead of hardcoded yishun */}
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">
           <svg className="w-5 h-5 stroke-sp-teal" fill="none" viewBox="0 0 24 24" strokeWidth={2}>

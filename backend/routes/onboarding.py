@@ -6,11 +6,18 @@ GET  /api/onboarding  — resolve onboarding state from env USER_ID / HOUSEHOLD_
 
 import uuid
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from database.clickhouse import get_client
 from config import settings
 from models.schemas import OnboardingRequest, OnboardingResponse
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
+
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
 
 
 @router.post("", response_model=OnboardingResponse)
@@ -42,8 +49,10 @@ def create_onboarding(data: OnboardingRequest):
         parameters={"hid": household_id},
     ).result_rows
     if existing:
+        found_uid = str(existing[0][0])
+        settings.user_id = found_uid          # session-only, lost on restart
         return OnboardingResponse(
-            user_id=str(existing[0][0]),
+            user_id=found_uid,
             message="Existing onboarding profile found for HOUSEHOLD_ID.",
         )
 
@@ -89,70 +98,42 @@ def create_onboarding(data: OnboardingRequest):
         ],
     )
 
+    settings.user_id = user_id              # session-only, lost on restart
     return OnboardingResponse(user_id=user_id, message="Profile saved successfully.")
 
 
 @router.get("")
 def get_onboarding():
+    """Only checks in-memory settings.user_id (seeded from .env on startup).
+    Backend restart with USER_ID= empty in .env will always force re-onboard."""
     if not settings.household_id:
         raise HTTPException(
             status_code=400,
             detail="HOUSEHOLD_ID is required in backend env before onboarding can begin.",
         )
 
-    client = get_client()
+    effective_user_id = (settings.user_id or "").strip()
+    print(f"[onboarding GET] settings.user_id={effective_user_id!r}")
 
-    configured_user_id = (settings.user_id or "").strip()
-    if configured_user_id:
-        configured_exists = client.query(
+    if effective_user_id:
+        client = get_client()
+        user_exists = client.query(
             "SELECT 1 FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
-            parameters={"uid": configured_user_id},
+            parameters={"uid": effective_user_id},
         ).result_rows
-        if configured_exists:
-            return OnboardingResponse(
-                user_id=configured_user_id,
-                message="Onboarding skipped. USER_ID is set in backend env.",
+        if user_exists:
+            resp = OnboardingResponse(
+                user_id=effective_user_id,
+                message="User found.",
             )
+            return JSONResponse(content=resp.model_dump(), headers=NO_CACHE_HEADERS)
 
-    existing = client.query(
-        "SELECT UserID FROM details_per_household WHERE toString(HouseholdID) = {hid:String} LIMIT 1",
-        parameters={"hid": settings.household_id},
-    ).result_rows
-    if existing:
-        return OnboardingResponse(
-            user_id=str(existing[0][0]),
-            message="Existing onboarding profile found for HOUSEHOLD_ID.",
-        )
-
-    # No USER_ID set and no existing user for this HOUSEHOLD_ID: onboarding required
-    result = client.query(
-        """
-        SELECT
-            hd.UserID, hd.HouseholdID, hd.Area, hd.Region, hd.District,
-            hd.PostalCode, hd.Dwelling_type, hd.Flat_type,
-            hui.Floor_area_sqm, hui.Num_residents, hui.Num_children,
-            hui.Num_elderly, hui.Num_tenants, hui.Aircon_usage,
-            hui.Num_Aircons, hui.Has_WFH_days, hui.Num_WFH
-        FROM details_per_household hd
-        LEFT JOIN input_per_household hui ON toString(hd.UserID) = hui.UserID
-        WHERE toString(hd.HouseholdID) = {hid:String}
-        LIMIT 1
-        """,
-        parameters={"hid": settings.household_id},
-    )
-    if not result.result_rows:
-        return {
+    # No valid user found — require onboarding
+    return JSONResponse(
+        content={
             "user_id": "",
             "household_id": settings.household_id,
-            "message": "Onboarding required for configured HOUSEHOLD_ID.",
-        }
-
-    row = result.result_rows[0]
-    cols = result.column_names
-    data = dict(zip(cols, row))
-    # Convert UUID objects to strings
-    if "UserID" in data and data["UserID"]:
-        data["UserID"] = str(data["UserID"])
-    if "HouseholdID" in data and data["HouseholdID"]:
-        data["HouseholdID"] = str(data["HouseholdID"])
-    return data
+            "message": "Onboarding required.",
+        },
+        headers=NO_CACHE_HEADERS,
+    )

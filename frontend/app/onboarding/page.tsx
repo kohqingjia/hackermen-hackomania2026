@@ -30,10 +30,16 @@ export default function OnboardingPage() {
         }
 
         localStorage.removeItem("powerblock_user_id");
+        localStorage.removeItem("powerblock_postal_code");
+        localStorage.removeItem("powerblock_household_id");
+        localStorage.removeItem("powerblock_target_bill");
         setReady(true);
       })
       .catch(() => {
         localStorage.removeItem("powerblock_user_id");
+        localStorage.removeItem("powerblock_postal_code");
+        localStorage.removeItem("powerblock_household_id");
+        localStorage.removeItem("powerblock_target_bill");
         setReady(true);
       });
   }, [router]);
