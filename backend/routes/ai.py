@@ -65,7 +65,9 @@ def _get_user(client, user_id: str) -> dict:
             hu.Aircon_usage,
             hu.Num_Aircons,
             hu.Has_WFH_days,
-            hu.Num_WFH
+            hu.Num_WFH,
+            hu.Floor_area_sqm,
+            hu.Target_bill
         FROM details_per_household hd
         LEFT JOIN input_per_household hu ON toString(hd.UserID) = hu.UserID
         WHERE toString(hd.UserID) = {uid:String}
@@ -78,7 +80,7 @@ def _get_user(client, user_id: str) -> dict:
     cols = [
         "household_id", "postal_code", "district", "flat_type", "dwelling_type",
         "num_residents", "num_children", "num_elderly", "num_tenants", "aircon_usage",
-        "num_aircons", "has_wfh_days", "num_wfh",
+        "num_aircons", "has_wfh_days", "num_wfh", "floor_area_sqm", "target_bill"
     ]
     result = dict(zip(cols, row[0]))
     # Cast UUID values to strings
@@ -114,7 +116,19 @@ def get_insights(
     def block_total(postal_code: str, d: date) -> float:
         rows = client.query(
             """
-            SELECT sum(`Consumption(kWh)`)
+            SELECT sum(`Consumption(kWh)`
+            FROM consumption_per_household_daily e
+            JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+            WHERE hd.PostalCode = {pc:String} AND e.Day = {d:Date}
+            """,
+            parameters={"pc": postal_code, "d": d.isoformat()},
+        ).result_rows
+        return float(rows[0][0] or 0)
+    # Block average daily usage
+    def block_avg(postal_code: str, d: date) -> float:
+        rows = client.query(
+            """
+            SELECT avg(`Consumption(kWh)`)
             FROM consumption_per_household_daily e
             JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
             WHERE hd.PostalCode = {pc:String} AND e.Day = {d:Date}
@@ -138,7 +152,7 @@ def get_insights(
         return rows[0][0].strftime("%H:%M") if rows else "20:00"
 
     user_kwh = daily_total(household_id, target_date)
-    block_avg = block_total(user["postal_code"], target_date)
+    block_avg_kwh = block_avg(user["postal_code"], target_date)
     prev_kwh = daily_total(household_id, yesterday)
     ph = peak_hour(household_id, target_date)
 
@@ -146,7 +160,7 @@ def get_insights(
         user_id=settings.user_id,
         user_kwh_total=user_kwh,
         peak_hour=ph,
-        block_avg_kwh=block_avg,
+        block_avg_kwh=block_avg_kwh,
         prev_day_kwh=prev_kwh,
         flat_type=user["flat_type"],
         aircon_usage=user.get("aircon_usage", 0),
@@ -181,6 +195,10 @@ def get_recommendations():
         num_wfh=user.get("num_wfh", 0),
         aircon_usage=user.get("aircon_usage", 0),
         num_residents=user.get("num_residents", 0),
+        num_aircons=user.get("num_aircons", 0),
+        num_children=user.get("num_children", 0),
+        num_elderly=user.get("num_elderly", 0),
+        num_tenants=user.get("num_tenants", 0)
     )
 
     return AIRecommendResponse(
@@ -204,7 +222,12 @@ def get_monthly_analysis():
 
     def month_total(hid: str, start: date, end: date) -> float:
         rows = client.query(
-            "SELECT sum(`Consumption(kWh)`) FROM consumption_per_household_monthly WHERE HouseholdID={hid:String} AND MonthStart BETWEEN {s:Date} AND {e:Date}",
+            """
+            SELECT sum(`Consumption(kWh)`) 
+            FROM consumption_per_household_monthly 
+            WHERE HouseholdID={hid:String} 
+            AND MonthStart BETWEEN {s:Date} AND {e:Date}
+            """,
             parameters={"hid": hid, "s": start.isoformat(), "e": end.isoformat()},
         ).result_rows
         return float(rows[0][0] or 0)
@@ -212,17 +235,19 @@ def get_monthly_analysis():
     current_kwh = month_total(household_id, current_month_start, today)
     prev_kwh = month_total(household_id, prev_month_start, prev_month_end)
 
-    budget_sgd = 80.0  # default budget
+    target_bill = user.get("target_bill", 0)
     projected_bill = round(current_kwh * 0.33 * (30 / max(today.day, 1)), 2)
     change_pct = round(((current_kwh - prev_kwh) / prev_kwh * 100) if prev_kwh else 0, 1)
-    target_reduction = 10  # default 10% target
-    on_track = change_pct <= -target_reduction
+    savings_sgd = round(current_kwh * 0.33 - prev_kwh * 0.33, 2)
+    # target_reduction = 10  # default 10% target
+    # on_track = change_pct <= -target_reduction
+    on_track = (projected_bill <= target_bill) if target_bill else None
 
     narrative = generate_monthly_analysis(
         current_month_kwh=current_kwh,
         previous_month_kwh=prev_kwh,
-        budget_sgd=budget_sgd,
-        target_reduction_pct=target_reduction,
+        target_bill=target_bill,
+        projected_bill=projected_bill,
         flat_type=user["flat_type"],
     )
 
@@ -231,9 +256,10 @@ def get_monthly_analysis():
         current_month_kwh=round(current_kwh, 2),
         previous_month_kwh=round(prev_kwh, 2),
         change_pct=change_pct,
-        on_track_for_target=on_track,
+        savings_sgd=savings_sgd,
         projected_bill_sgd=projected_bill,
-        budget_sgd=budget_sgd,
+        target_bill_sgd=target_bill,
+        on_track_for_target=on_track,
         narrative=narrative,
         generated_at=datetime.utcnow().isoformat(),
     )
