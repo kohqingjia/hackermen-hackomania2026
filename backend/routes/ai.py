@@ -46,26 +46,28 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
-
+# Get details of a specific user
 def _get_user(client, user_id: str) -> dict:
     """Return combined profile from household_data + household_user_input."""
+    
     row = client.query(
         """
         SELECT
             hd.HouseholdID,
-            hd.Postal_Code,
+            hd.PostalCode,
             hd.District,
             hd.Flat_type,
             hd.Dwelling_type,
             hu.Num_residents,
             hu.Num_children,
             hu.Num_elderly,
+            hu.Num_tenants,
             hu.Aircon_usage,
             hu.Num_Aircons,
-            hu.Num_WFH,
-            hu.Floor_area_sqm
-        FROM household_data hd
-        LEFT JOIN household_user_input hu ON hd.UserID = hu.UserID
+            hu.Has_WFH_days,
+            hu.Num_WFH
+        FROM details_per_household hd
+        LEFT JOIN input_per_household hu ON hd.UserID = hu.UserID
         WHERE hd.UserID = {uid:String}
         LIMIT 1
         """,
@@ -75,8 +77,8 @@ def _get_user(client, user_id: str) -> dict:
         raise HTTPException(status_code=404, detail="User not found")
     cols = [
         "household_id", "postal_code", "district", "flat_type", "dwelling_type",
-        "num_residents", "num_children", "num_elderly", "aircon_usage",
-        "num_aircons", "num_wfh", "floor_area_sqm",
+        "num_residents", "num_children", "num_elderly", "num_tenants", "aircon_usage",
+        "num_aircons", "has_wfh_days", "num_wfh",
     ]
     return dict(zip(cols, row[0]))
 
@@ -94,7 +96,11 @@ def get_insights(
 
     def daily_total(hid: str, d: date) -> float:
         rows = client.query(
-            "SELECT sum(Consumption) FROM household_electricity_usage WHERE HouseholdID={hid:String} AND toDate(Timestamp)={d:Date}",
+            """SELECT sum(Consumption) 
+            FROM household_electricity_usage 
+            WHERE HouseholdID={hid:String} 
+            AND toDate(Timestamp)={d:Date}
+            """,
             parameters={"hid": hid, "d": d.isoformat()},
         ).result_rows
         return float(rows[0][0] or 0)
