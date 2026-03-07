@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Leave empty to use system date.today()
     current_app_date: str = "2025-12-31"
 
+    # OneMap API key for geocoding postal codes
+    onemap_api_key: str = ""
+
     class Config:
         env_file = ".env"
 
