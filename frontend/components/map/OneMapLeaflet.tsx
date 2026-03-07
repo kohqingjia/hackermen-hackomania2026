@@ -61,8 +61,13 @@ export default function OneMapLeaflet({ blocks, userPostalCode, onBlockSelect }:
       if (!containerRef.current) return;
       if ((containerRef.current as any)._leaflet_id) return;
 
+      const firstBlock = blocks[0];
+      const mapCenter: [number, number] = firstBlock
+        ? [Number(firstBlock.lat), Number(firstBlock.lng)]
+        : [1.4285, 103.8348];
+
       const map = L.map(containerRef.current, {
-        center: [1.4285, 103.8348],
+        center: mapCenter,
         zoom: 16,
         zoomControl: true,
       });
@@ -74,7 +79,9 @@ export default function OneMapLeaflet({ blocks, userPostalCode, onBlockSelect }:
       }).addTo(map);
 
       blocks.forEach((block) => {
-        const coords = BLOCK_COORDS[block.postal_code];
+        const coords = Number.isFinite(Number(block.lat)) && Number.isFinite(Number(block.lng))
+          ? [Number(block.lat), Number(block.lng)] as [number, number]
+          : BLOCK_COORDS[block.postal_code];
         if (!coords) return;
         const isUser = block.postal_code === userPostalCode;
 
