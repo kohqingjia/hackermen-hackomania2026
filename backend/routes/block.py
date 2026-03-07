@@ -7,11 +7,12 @@ GET /api/block/{postal_code}?date=YYYY-MM-DD&user_id=...
 
 from datetime import date, timedelta
 import math
+from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
-from config import settings
 from models.schemas import BlockUsageResponse, HalfHourlyPoint, DailyComparisonPoint, WeeklyComparisonPoint
 from utils.datetime_helper import get_app_date
+from utils.user_resolver import resolve_user_id
 
 router = APIRouter(prefix="/api/block", tags=["block"])
 
@@ -48,12 +49,14 @@ def _household_ids_for_postal(client, postal_code: str) -> list[str]:
 def get_block_usage( 
     postal_code: str,
     query_date: str = Query(default=None, alias="date"),
+    user_id: Optional[str] = Query(default=None),
 ):
     client = get_client()
     target_date = date.fromisoformat(query_date) if query_date else get_app_date()
     date_str = target_date.isoformat()
 
-    household_id, _ = _resolve_user(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    household_id, _ = _resolve_user(client, effective_uid)
 
     # Block average per half-hour slot (all households in this postal code)
     block_rows = client.query(

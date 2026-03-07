@@ -7,11 +7,12 @@ POST /api/ai/chat                                   — freeform AI coach chat
 """
 
 from datetime import date, timedelta, datetime
+from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 from database.clickhouse import get_client
-from config import settings
 from utils.datetime_helper import get_app_date
+from utils.user_resolver import resolve_user_id
 from services.openai_service import (
     generate_usage_insight,
     generate_recommendations,
@@ -91,9 +92,11 @@ def _get_user(client, user_id: str) -> dict:
 @router.get("/insights", response_model=AIInsightResponse)
 def get_insights(
     query_date: str = Query(default=None, alias="date"),
+    user_id: Optional[str] = Query(default=None),
 ):
     client = get_client()
-    user = _get_user(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    user = _get_user(client, effective_uid)
     target_date = date.fromisoformat(query_date) if query_date else get_app_date()
     yesterday = target_date - timedelta(days=1)
 
@@ -143,7 +146,7 @@ def get_insights(
     ph = peak_hour(household_id, target_date)
 
     result = generate_usage_insight(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         user_kwh_total=user_kwh,
         peak_hour=ph,
         block_avg_kwh=block_avg,
@@ -153,7 +156,7 @@ def get_insights(
     )
 
     return AIInsightResponse(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         insight=result.get("insight", ""),
         tip=result.get("tip", ""),
         comparison=result.get("comparison", ""),
@@ -162,9 +165,12 @@ def get_insights(
 
 
 @router.get("/recommend", response_model=AIRecommendResponse)
-def get_recommendations():
+def get_recommendations(
+    user_id: Optional[str] = Query(default=None),
+):
     client = get_client()
-    user = _get_user(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    user = _get_user(client, effective_uid)
 
     household_id = user["household_id"]
     today = get_app_date().isoformat()
@@ -184,16 +190,19 @@ def get_recommendations():
     )
 
     return AIRecommendResponse(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         recommendations=[AIRecommendation(**r) for r in recs],
         generated_at=datetime.utcnow().isoformat(),
     )
 
 
 @router.get("/analyze", response_model=AIMonthlyAnalysisResponse)
-def get_monthly_analysis():
+def get_monthly_analysis(
+    user_id: Optional[str] = Query(default=None),
+):
     client = get_client()
-    user = _get_user(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    user = _get_user(client, effective_uid)
 
     household_id = user["household_id"]
 
@@ -227,7 +236,7 @@ def get_monthly_analysis():
     )
 
     return AIMonthlyAnalysisResponse(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         current_month_kwh=round(current_kwh, 2),
         previous_month_kwh=round(prev_kwh, 2),
         change_pct=change_pct,
@@ -242,7 +251,10 @@ def get_monthly_analysis():
 @router.post("/chat", response_model=ChatResponse)
 def ai_chat(req: ChatRequest):
     user_context = ""
-    user_id = req.user_id or settings.user_id
+    try:
+        user_id = resolve_user_id(req.user_id)
+    except Exception:
+        user_id = None
     if user_id:
         try:
             db = get_client()
@@ -304,11 +316,14 @@ def ai_chat(req: ChatRequest):
 # ---- Anomaly Detection (simple aggregation) ----
 
 @router.get("/anomaly", response_model=AnomalyResponse)
-def get_anomaly():
+def get_anomaly(
+    user_id: Optional[str] = Query(default=None),
+):
     """Compare today's usage to the user's 7-day average.
     If today > 1.3x the 7-day avg, flag as anomaly."""
     client = get_client()
-    user = _get_user(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    user = _get_user(client, effective_uid)
     household_id = user["household_id"]
 
     today = get_app_date()
@@ -345,7 +360,7 @@ def get_anomaly():
         )
 
     return AnomalyResponse(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         has_anomaly=has_anomaly,
         analysis=analysis,
         generated_at=datetime.utcnow().isoformat(),
@@ -355,10 +370,13 @@ def get_anomaly():
 # ---- Projections ----
 
 @router.get("/projections", response_model=ProjectionsResponse)
-def get_projections():
+def get_projections(
+    user_id: Optional[str] = Query(default=None),
+):
     """Project the month-end bill based on current month usage so far."""
     client = get_client()
-    user = _get_user(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    user = _get_user(client, effective_uid)
     household_id = user["household_id"]
 
     today = get_app_date()
@@ -381,7 +399,7 @@ def get_projections():
     target_bill = None
 
     return ProjectionsResponse(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         projected_bill_sgd=projected_bill,
         projected_avg_daily_kwh=round(avg_daily, 2),
         projected_total_kwh=round(projected_total, 2),
@@ -394,10 +412,13 @@ def get_projections():
 # ---- Household Benchmark ----
 
 @router.get("/benchmark", response_model=HouseholdBenchmarkResponse)
-def get_benchmark():
+def get_benchmark(
+    user_id: Optional[str] = Query(default=None),
+):
     """Compare user's recent avg daily usage to others with the same flat type in the same district."""
     client = get_client()
-    user = _get_user(client, settings.user_id)
+    effective_uid = resolve_user_id(user_id)
+    user = _get_user(client, effective_uid)
     household_id = user["household_id"]
 
     today = get_app_date()
@@ -434,7 +455,7 @@ def get_benchmark():
     diff_pct = round(((user_avg - profile_avg) / profile_avg * 100) if profile_avg else 0, 1)
 
     return HouseholdBenchmarkResponse(
-        user_id=settings.user_id,
+        user_id=effective_uid,
         flat_type=user["flat_type"],
         district=district,
         user_avg_daily_kwh=round(user_avg, 2),

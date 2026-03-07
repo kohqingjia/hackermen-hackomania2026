@@ -10,10 +10,11 @@ Challenge types:
 """
 
 from datetime import datetime, date, timedelta
+from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
-from config import settings
 from utils.datetime_helper import get_app_date
+from utils.user_resolver import resolve_user_id
 from models.schemas import (
     ChallengesResponse,
     Challenge,
@@ -70,9 +71,11 @@ CHALLENGE_CATALOGUE = [
 
 
 @router.get("", response_model=ChallengesResponse)
-def get_challenges():
+def get_challenges(
+    user_id: Optional[str] = Query(default=None),
+):
     client = get_client()
-    user_id = settings.user_id
+    effective_uid = resolve_user_id(user_id)
     today = get_app_date()
     week_start = today - timedelta(days=6)
 
@@ -87,7 +90,7 @@ def get_challenges():
           AND toDate(completed_at) BETWEEN {ws:Date} AND {td:Date}
         ORDER BY completed_at DESC
         """,
-        parameters={"uid": user_id, "ws": week_start.isoformat(), "td": today.isoformat()},
+        parameters={"uid": effective_uid, "ws": week_start.isoformat(), "td": today.isoformat()},
     ).result_rows
     history_entries = [
         ChallengeHistoryEntry(
@@ -108,19 +111,19 @@ def get_challenges():
           AND toDate(completed_at) = {td:Date}
         GROUP BY challenge_id
         """,
-        parameters={"uid": user_id, "td": today.isoformat()},
+        parameters={"uid": effective_uid, "td": today.isoformat()},
     ).result_rows
     completed_today_map = {r[0]: r[1] for r in today_rows}
 
     # Auto-check CH002: is user below block avg today?
-    auto_result = _check_auto_challenges(client, user_id)
+    auto_result = _check_auto_challenges(client, effective_uid)
 
     challenges = []
     weekly_points = sum(int(row[2]) for row in history_rows)
 
     total_points = client.query(
         "SELECT sum(points_earned) FROM user_challenges WHERE user_id = {uid:String}",
-        parameters={"uid": user_id},
+        parameters={"uid": effective_uid},
     ).result_rows[0][0] or 0
 
     for ch in CHALLENGE_CATALOGUE:
@@ -137,7 +140,7 @@ def get_challenges():
         challenges.append(ch_copy)
 
     return ChallengesResponse(
-        user_id=user_id,
+        user_id=effective_uid,
         total_points=int(total_points),
         weekly_points=weekly_points,
         challenges=challenges,
@@ -148,7 +151,7 @@ def get_challenges():
 @router.post("/complete", response_model=CompleteChallengeResponse)
 def complete_challenge(data: CompleteChallengeRequest):
     client = get_client()
-    user_id = data.user_id or settings.user_id
+    user_id = resolve_user_id(data.user_id)
 
     challenge = next((c for c in CHALLENGE_CATALOGUE if c.challenge_id == data.challenge_id), None)
     if not challenge:

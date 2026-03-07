@@ -40,6 +40,7 @@ export default function DashboardPage() {
     // Validate with backend first
     getOnboarding()
       .then((result) => {
+        console.log(result);
         const userId = String(result.user_id ?? result.UserID ?? "").trim();
         const householdId = String(result.household_id ?? result.HouseholdID ?? "").trim();
         const postalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
@@ -53,6 +54,9 @@ export default function DashboardPage() {
 
         if (!userId) {
           localStorage.removeItem("powerblock_user_id");
+          localStorage.removeItem("powerblock_postal_code");
+          localStorage.removeItem("powerblock_household_id");
+          localStorage.removeItem("powerblock_target_bill");
           router.replace("/onboarding");
           return;
         }
@@ -73,6 +77,9 @@ export default function DashboardPage() {
       })
       .catch(() => {
         localStorage.removeItem("powerblock_user_id");
+        localStorage.removeItem("powerblock_postal_code");
+        localStorage.removeItem("powerblock_household_id");
+        localStorage.removeItem("powerblock_target_bill");
         router.replace("/onboarding");
       });
   }, [router]);

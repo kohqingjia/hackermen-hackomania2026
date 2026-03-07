@@ -17,6 +17,7 @@ export interface OnboardingForm {
   num_aircons?: number;
   has_wfh_days?: string[];     // e.g. ["Monday","Wednesday"]
   num_wfh: number;             // 0-7
+  target_bill?: number;        // monthly target bill in dollars
 }
 
 export interface OnboardingResponse {
