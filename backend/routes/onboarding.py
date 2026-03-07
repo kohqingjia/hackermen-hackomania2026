@@ -1,11 +1,10 @@
 """
 Onboarding route
-POST /api/onboarding  — save user profile into household_data + household_user_input, return user_id
-GET  /api/onboarding/{user_id} — retrieve saved profile
+POST /api/onboarding  — save user profile into details_per_household + input_per_household, return user_id
+GET  /api/onboarding  — resolve onboarding state from env USER_ID / HOUSEHOLD_ID
 """
 
 import uuid
-from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from database.clickhouse import get_client
 from config import settings
@@ -16,15 +15,44 @@ router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
 @router.post("", response_model=OnboardingResponse)
 def create_onboarding(data: OnboardingRequest):
-    user_id = str(uuid.uuid4())
+    if not settings.household_id:
+        raise HTTPException(
+            status_code=400,
+            detail="HOUSEHOLD_ID is required in backend env before onboarding can begin.",
+        )
+
+    configured_user_id = (settings.user_id or "").strip()
+    user_id = configured_user_id or str(uuid.uuid4())
+    household_id = settings.household_id
     client = get_client()
 
-    # Insert into household_data
+    if configured_user_id:
+        configured_exists = client.query(
+            "SELECT 1 FROM details_per_household WHERE UserID = {uid:String} LIMIT 1",
+            parameters={"uid": configured_user_id},
+        ).result_rows
+        if configured_exists:
+            return OnboardingResponse(
+                user_id=configured_user_id,
+                message="Onboarding skipped. USER_ID is set in backend env.",
+            )
+
+    existing = client.query(
+        "SELECT UserID FROM details_per_household WHERE HouseholdID = {hid:String} LIMIT 1",
+        parameters={"hid": household_id},
+    ).result_rows
+    if existing:
+        return OnboardingResponse(
+            user_id=str(existing[0][0]),
+            message="Existing onboarding profile found for HOUSEHOLD_ID.",
+        )
+
+    # Insert into details_per_household
     client.insert(
-        "household_data",
+        "details_per_household",
         [[
             user_id,
-            data.household_id,
+            household_id,
             data.area,
             data.region,
             data.district,
@@ -34,16 +62,16 @@ def create_onboarding(data: OnboardingRequest):
         ]],
         column_names=[
             "UserID", "HouseholdID", "Area", "Region", "District",
-            "Postal_Code", "Dwelling_type", "Flat_type",
+            "PostalCode", "Dwelling_type", "Flat_type",
         ],
     )
 
-    # Insert into household_user_input
+    # Insert into input_per_household
     client.insert(
-        "household_user_input",
+        "input_per_household",
         [[
             user_id,
-            data.household_id,
+            household_id,
             data.floor_area_sqm or 0,
             data.num_residents,
             data.num_children,
@@ -66,27 +94,65 @@ def create_onboarding(data: OnboardingRequest):
 
 @router.get("")
 def get_onboarding():
+    if not settings.household_id:
+        raise HTTPException(
+            status_code=400,
+            detail="HOUSEHOLD_ID is required in backend env before onboarding can begin.",
+        )
+
     client = get_client()
-    user_id = settings.user_id
-    # Join household_data and household_user_input
+
+    configured_user_id = (settings.user_id or "").strip()
+    if configured_user_id:
+        configured_exists = client.query(
+            "SELECT 1 FROM details_per_household WHERE UserID = {uid:String} LIMIT 1",
+            parameters={"uid": configured_user_id},
+        ).result_rows
+        if configured_exists:
+            return OnboardingResponse(
+                user_id=configured_user_id,
+                message="Onboarding skipped. USER_ID is set in backend env.",
+            )
+
+    existing = client.query(
+        "SELECT UserID FROM details_per_household WHERE HouseholdID = {hid:String} LIMIT 1",
+        parameters={"hid": settings.household_id},
+    ).result_rows
+    if existing:
+        return OnboardingResponse(
+            user_id=str(existing[0][0]),
+            message="Existing onboarding profile found for HOUSEHOLD_ID.",
+        )
+
+    # No USER_ID set and no existing user for this HOUSEHOLD_ID: onboarding required
     result = client.query(
         """
         SELECT
             hd.UserID, hd.HouseholdID, hd.Area, hd.Region, hd.District,
-            hd.Postal_Code, hd.Dwelling_type, hd.Flat_type,
+            hd.PostalCode, hd.Dwelling_type, hd.Flat_type,
             hui.Floor_area_sqm, hui.Num_residents, hui.Num_children,
             hui.Num_elderly, hui.Num_tenants, hui.Aircon_usage,
             hui.Num_Aircons, hui.Has_WFH_days, hui.Num_WFH
-        FROM household_data hd
-        LEFT JOIN household_user_input hui ON hd.UserID = hui.UserID
-        WHERE hd.UserID = {uid:String}
+        FROM details_per_household hd
+        LEFT JOIN input_per_household hui ON hd.UserID = hui.UserID
+        WHERE hd.HouseholdID = {hid:String}
         LIMIT 1
         """,
-        parameters={"uid": user_id},
+        parameters={"hid": settings.household_id},
     )
     if not result.result_rows:
-        raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "user_id": "",
+            "household_id": settings.household_id,
+            "message": "Onboarding required for configured HOUSEHOLD_ID.",
+        }
 
     row = result.result_rows[0]
     cols = result.column_names
-    return dict(zip(cols, row))
+    data = dict(zip(cols, row))
+    # Convert UUID objects to strings
+    if "UserID" in data and data["UserID"]:
+        data["UserID"] = str(data["UserID"])
+    if "HouseholdID" in data and data["HouseholdID"]:
+        data["HouseholdID"] = str(data["HouseholdID"])
+    return data
