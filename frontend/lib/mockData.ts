@@ -243,6 +243,20 @@ export const MOCK_CHALLENGES: ChallengesResponse = {
   user_id: "123",
   total_points: 185,
   weekly_points: 60,
+  completed_history: [
+    {
+      challenge_id: "ch_006",
+      title: "Eco Selfie",
+      points_earned: 20,
+      completed_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+    {
+      challenge_id: "ch_005",
+      title: "Morning Routine Shift",
+      points_earned: 15,
+      completed_at: new Date(Date.now() - 86400000).toISOString(),
+    },
+  ],
   challenges: [
     {
       challenge_id: "ch_001",

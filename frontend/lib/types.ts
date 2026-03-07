@@ -127,6 +127,14 @@ export interface ChallengesResponse {
   total_points: number;
   weekly_points: number;
   challenges: Challenge[];
+  completed_history: ChallengeHistoryEntry[];
+}
+
+export interface ChallengeHistoryEntry {
+  challenge_id: string;
+  title: string;
+  points_earned: number;
+  completed_at: string;
 }
 
 export interface CompleteChallengeRequest {

@@ -28,13 +28,52 @@ const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const mockChallengesState: import("./types").ChallengesResponse = {
   ...MOCK_CHALLENGES,
   challenges: MOCK_CHALLENGES.challenges.map((challenge) => ({ ...challenge })),
+  completed_history: MOCK_CHALLENGES.completed_history.map((entry) => ({ ...entry })),
 };
 
+function getDateKey(value: string | Date): string {
+  const d = typeof value === "string" ? new Date(value) : value;
+  return d.toISOString().slice(0, 10);
+}
+
+function isWithinPastDays(timestamp: string, days: number): boolean {
+  const now = new Date();
+  const past = new Date(now);
+  past.setDate(now.getDate() - (days - 1));
+  return new Date(timestamp) >= past;
+}
+
 function cloneChallengesState(userId: string): import("./types").ChallengesResponse {
+  const todayKey = getDateKey(new Date());
+  const history = mockChallengesState.completed_history
+    .filter((entry) => isWithinPastDays(entry.completed_at, 7))
+    .sort((a, b) => +new Date(b.completed_at) - +new Date(a.completed_at));
+
+  const completedTodayMap = new Map(
+    history
+      .filter((entry) => getDateKey(entry.completed_at) === todayKey)
+      .map((entry) => [entry.challenge_id, entry.completed_at]),
+  );
+
+  const challenges = mockChallengesState.challenges.map((challenge) => {
+    const completedAt = completedTodayMap.get(challenge.challenge_id);
+    return {
+      ...challenge,
+      is_completed: Boolean(completedAt),
+      completed_at: completedAt,
+    };
+  });
+
+  const totalPoints = mockChallengesState.completed_history.reduce((sum, entry) => sum + entry.points_earned, 0);
+  const weeklyPoints = history.reduce((sum, entry) => sum + entry.points_earned, 0);
+
   return {
     ...mockChallengesState,
     user_id: userId,
-    challenges: mockChallengesState.challenges.map((challenge) => ({ ...challenge })),
+    total_points: totalPoints,
+    weekly_points: weeklyPoints,
+    challenges,
+    completed_history: history,
   };
 }
 
@@ -141,24 +180,34 @@ export async function completeChallenge(
     };
   }
 
-  if (challenge.is_completed) {
+  const todayKey = getDateKey(new Date());
+  const completedToday = mockChallengesState.completed_history.some(
+    (entry) => entry.challenge_id === data.challenge_id && getDateKey(entry.completed_at) === todayKey,
+  );
+
+  if (completedToday) {
     return {
       success: true,
       points_earned: 0,
-      total_points: mockChallengesState.total_points,
-      message: "Challenge already completed.",
+      total_points: mockChallengesState.completed_history.reduce((sum, entry) => sum + entry.points_earned, 0),
+      message: "Challenge already completed today.",
     };
   }
 
-  challenge.is_completed = true;
-  challenge.completed_at = new Date().toISOString();
-  mockChallengesState.total_points += challenge.points;
-  mockChallengesState.weekly_points += challenge.points;
+  const completedAt = new Date().toISOString();
+  mockChallengesState.completed_history.unshift({
+    challenge_id: challenge.challenge_id,
+    title: challenge.title,
+    points_earned: challenge.points,
+    completed_at: completedAt,
+  });
+
+  const totalPoints = mockChallengesState.completed_history.reduce((sum, entry) => sum + entry.points_earned, 0);
 
   return {
     success: true,
     points_earned: challenge.points,
-    total_points: mockChallengesState.total_points,
+    total_points: totalPoints,
     message: "Great job! Keep going 💪",
   };
 }
