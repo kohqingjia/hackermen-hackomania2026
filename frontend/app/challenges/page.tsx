@@ -49,7 +49,7 @@ export default function ChallengesPage() {
       setToast(
         <span className="inline-flex items-center justify-center gap-1">
           <span>+{res.points_earned}</span>
-          <LeafIcon className="w-4 h-4 text-green-200" />
+          <LeafIcon className="w-4 h-4 text-green-600" />
           <span>{res.message}</span>
         </span>
       );
@@ -150,7 +150,7 @@ export default function ChallengesPage() {
               )}
               {completedToday.length > 0 && (
                 <Card>
-                  <p className="text-xs text-sp-text-secondary text-center py-2">
+                  <p className="text-sm text-sp-text-secondary text-center py-2">
                     Completed today: {completedToday.length}/{data?.challenges.length ?? 0}
                   </p>
                 </Card>
@@ -215,7 +215,7 @@ export default function ChallengesPage() {
       {isMounted && toast && createPortal(
         <div className="fixed inset-0 z-[90] pointer-events-none">
           <div
-            className="absolute left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-md bg-sp-teal text-white text-sm font-medium px-4 py-3 rounded-2xl shadow-lg text-center"
+            className="absolute left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-md bg-sp-chart text-black text-sm font-medium px-4 py-3 rounded-2xl shadow-lg text-center"
             style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}
           >
             {toast}
