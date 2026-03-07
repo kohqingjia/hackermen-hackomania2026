@@ -1,0 +1,109 @@
+"""
+Leaderboard route
+GET /api/leaderboard/{district}
+  Returns weekly block rankings with points.
+  Resets every Monday. Points: 1st=100, 2nd=80, 3rd=25.
+"""
+
+from datetime import date, timedelta
+from fastapi import APIRouter, Query
+from database.clickhouse import get_client
+from models.schemas import LeaderboardResponse, LeaderboardEntry
+
+router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
+
+RANK_POINTS = {1: 100, 2: 80, 3: 25}
+
+
+def _week_start(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+@router.get("/{district}", response_model=LeaderboardResponse)
+def get_leaderboard(
+    district: str,
+    query_date: str = Query(default=None, alias="date"),
+):
+    client = get_client()
+    target_date = date.fromisoformat(query_date) if query_date else date.today()
+    week_start = _week_start(target_date)
+    week_end = week_start + timedelta(days=6)
+    prev_week_start = week_start - timedelta(days=7)
+    prev_week_end = week_start - timedelta(days=1)
+
+    # Current week avg per block
+    current = client.query(
+        """
+        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
+        FROM energy_usage
+        WHERE district = {dist:String}
+          AND toDate(timestamp) BETWEEN {ws:Date} AND {we:Date}
+        GROUP BY block_id
+        ORDER BY daily_avg ASC
+        """,
+        parameters={
+            "dist": district,
+            "ws": week_start.isoformat(),
+            "we": week_end.isoformat(),
+        },
+    ).result_rows
+
+    # Previous week for comparison
+    prev = client.query(
+        """
+        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
+        FROM energy_usage
+        WHERE district = {dist:String}
+          AND toDate(timestamp) BETWEEN {ws:Date} AND {we:Date}
+        GROUP BY block_id
+        """,
+        parameters={
+            "dist": district,
+            "ws": prev_week_start.isoformat(),
+            "we": prev_week_end.isoformat(),
+        },
+    ).result_rows
+
+    prev_map = {r[0]: r[1] for r in prev}
+
+    # Baseline = first week of data
+    baseline = client.query(
+        """
+        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
+        FROM energy_usage
+        WHERE district = {dist:String}
+          AND toDate(timestamp) = (
+              SELECT min(toDate(timestamp)) FROM energy_usage WHERE district = {dist:String}
+          )
+        GROUP BY block_id
+        """,
+        parameters={"dist": district},
+    ).result_rows
+    baseline_map = {r[0]: r[1] for r in baseline}
+
+    entries = []
+    for rank, (block_id, avg_kwh) in enumerate(current, start=1):
+        prev_avg = prev_map.get(block_id, avg_kwh)
+        base_avg = baseline_map.get(block_id, avg_kwh)
+        reduction_pct = round(((base_avg - avg_kwh) / base_avg * 100) if base_avg else 0, 1)
+        weekly_change = round(avg_kwh - prev_avg, 3)
+        points = RANK_POINTS.get(rank, 10)
+
+        entries.append(LeaderboardEntry(
+            rank=rank,
+            block_id=block_id,
+            avg_kwh=round(avg_kwh, 3),
+            reduction_pct=reduction_pct,
+            points=points,
+            weekly_change=weekly_change,
+        ))
+
+    next_monday = week_start + timedelta(days=7)
+    resets_in = (next_monday - target_date).days
+
+    return LeaderboardResponse(
+        week_start=week_start.isoformat(),
+        district=district,
+        entries=entries,
+        resets_in_days=resets_in,
+    )

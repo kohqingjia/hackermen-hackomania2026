@@ -1,0 +1,64 @@
+import clsx from "clsx";
+
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+}
+
+export default function Card({ children, className, onClick }: CardProps) {
+  return (
+    <div
+      onClick={onClick}
+      className={clsx(
+        "bg-white rounded-2xl shadow-sm border border-gray-100 p-4",
+        onClick && "cursor-pointer active:scale-[0.98] transition-transform",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-3">
+      <h2 className="text-base font-semibold text-sp-text">{title}</h2>
+      {subtitle && <p className="text-xs text-sp-text-secondary mt-0.5">{subtitle}</p>}
+    </div>
+  );
+}
+
+export function StatBadge({
+  value,
+  label,
+  variant = "default",
+}: {
+  value: string;
+  label: string;
+  variant?: "default" | "good" | "bad" | "alert";
+}) {
+  const colors = {
+    default: "bg-sp-chart text-sp-teal-dark",
+    good:    "bg-green-50 text-green-700",
+    bad:     "bg-red-50 text-red-600",
+    alert:   "bg-sp-alert-light text-sp-alert",
+  };
+
+  return (
+    <div className={clsx("rounded-xl px-3 py-2 text-center", colors[variant])}>
+      <div className="text-lg font-bold">{value}</div>
+      <div className="text-[10px] font-medium uppercase tracking-wide">{label}</div>
+    </div>
+  );
+}
+
+export function LoadingCard() {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-pulse">
+      <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
+      <div className="h-24 bg-gray-100 rounded" />
+    </div>
+  );
+}
