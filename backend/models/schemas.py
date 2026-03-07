@@ -106,7 +106,7 @@ class LeaderboardEntry(BaseModel):
 
 class WeeklyTopBlock(BaseModel):
     rank: int
-    block_id: str
+    postal_code: str
     avg_kwh: float
 
 
