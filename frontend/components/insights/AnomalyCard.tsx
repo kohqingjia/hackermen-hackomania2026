@@ -10,11 +10,11 @@ export default function AnomalyCard({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAnomaly(userId)
+    getAnomaly()
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
   if (loading) {
     return (

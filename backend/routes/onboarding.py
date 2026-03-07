@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from database.clickhouse import get_client
+from config import settings
 from models.schemas import OnboardingRequest, OnboardingResponse
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
@@ -63,9 +64,10 @@ def create_onboarding(data: OnboardingRequest):
     return OnboardingResponse(user_id=user_id, message="Profile saved successfully.")
 
 
-@router.get("/{user_id}")
-def get_onboarding(user_id: str):
+@router.get("")
+def get_onboarding():
     client = get_client()
+    user_id = settings.user_id
     # Join household_data and household_user_input
     result = client.query(
         """

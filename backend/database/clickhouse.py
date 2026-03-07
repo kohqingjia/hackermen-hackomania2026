@@ -28,6 +28,7 @@ def get_client():
         database=settings.clickhouse_database,
         secure=settings.clickhouse_secure,
         connect_timeout=30,
+        autogenerate_session_id=False,
     )
     _client.command("SELECT 1")
     print(f"[DB] Connected to ClickHouse at {settings.clickhouse_host}:{settings.clickhouse_port} (secure={settings.clickhouse_secure})")
@@ -102,6 +103,7 @@ def init_schema():
             password=settings.clickhouse_password,
             secure=settings.clickhouse_secure,
             connect_timeout=30,
+            autogenerate_session_id=False,
         )
         tmp.command(CREATE_DATABASE_SQL)
         print(f"[ClickHouse] Database '{settings.clickhouse_database}' ensured.")

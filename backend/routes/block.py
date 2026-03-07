@@ -2,21 +2,23 @@
 Block route
 GET /api/block/{postal_code}?date=YYYY-MM-DD&user_id=...
   Returns block-level (postal code) aggregated usage vs the user's own usage.
-  Queries household_electricity_usage joined with household_data for grouping.
+    Queries consumption_per_household joined with details_per_household for grouping.
 """
 
 from datetime import date, timedelta
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
+from config import settings
 from models.schemas import BlockUsageResponse, HalfHourlyPoint, DailyComparisonPoint, WeeklyComparisonPoint
+from utils.datetime_helper import get_app_date
 
 router = APIRouter(prefix="/api/block", tags=["block"])
 
 
 def _resolve_user(client, user_id: str) -> tuple[str, str]:
-    """Return (HouseholdID, Postal_Code) for the given user."""
+    """Return (HouseholdID, PostalCode) for the given user."""
     row = client.query(
-        "SELECT HouseholdID, Postal_Code FROM household_data WHERE UserID = {uid:String} LIMIT 1",
+        "SELECT HouseholdID, PostalCode FROM details_per_household WHERE UserID = {uid:String} LIMIT 1",
         parameters={"uid": user_id},
     ).result_rows
     if not row:
@@ -27,31 +29,30 @@ def _resolve_user(client, user_id: str) -> tuple[str, str]:
 def _household_ids_for_postal(client, postal_code: str) -> list[str]:
     """Return all HouseholdIDs in a postal code."""
     rows = client.query(
-        "SELECT DISTINCT HouseholdID FROM household_data WHERE Postal_Code = {pc:String}",
+        "SELECT DISTINCT HouseholdID FROM details_per_household WHERE PostalCode = {pc:String}",
         parameters={"pc": postal_code},
     ).result_rows
     return [r[0] for r in rows]
 
 
 @router.get("/{postal_code}", response_model=BlockUsageResponse)
-def get_block_usage(
+def get_block_usage( 
     postal_code: str,
-    user_id: str = Query(...),
     query_date: str = Query(default=None, alias="date"),
 ):
     client = get_client()
-    target_date = date.fromisoformat(query_date) if query_date else date.today()
+    target_date = date.fromisoformat(query_date) if query_date else get_app_date()
     date_str = target_date.isoformat()
 
-    household_id, _ = _resolve_user(client, user_id)
+    household_id, _ = _resolve_user(client, settings.user_id)
 
     # Block average per half-hour slot (all households in this postal code)
     block_rows = client.query(
         """
         SELECT e.Timestamp, avg(e.Consumption) AS avg_kwh
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
-        WHERE hd.Postal_Code = {pc:String}
+                FROM consumption_per_household e
+                JOIN details_per_household hd ON e.HouseholdID = hd.HouseholdID
+                WHERE hd.PostalCode = {pc:String}
           AND toDate(e.Timestamp) = {d:Date}
         GROUP BY e.Timestamp
         ORDER BY e.Timestamp ASC
@@ -63,7 +64,7 @@ def get_block_usage(
     user_rows = client.query(
         """
         SELECT Timestamp, Consumption
-        FROM household_electricity_usage
+                FROM consumption_per_household
         WHERE HouseholdID = {hid:String}
           AND toDate(Timestamp) = {d:Date}
         ORDER BY Timestamp ASC
@@ -108,13 +109,13 @@ def _daily_comparison_week(client, postal_code: str, household_id: str, ref_date
     rows = client.query(
         """
         SELECT
-            toDate(e.Timestamp) AS d,
-            sumIf(e.Consumption, e.HouseholdID = {hid:String}) AS user_kwh,
-            avg(e.Consumption) * 48 AS block_avg_kwh
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
-        WHERE hd.Postal_Code = {pc:String}
-          AND toDate(e.Timestamp) BETWEEN {s:Date} AND {e_end:Date}
+                        d.Day AS d,
+                        sumIf(d.Consumption, d.HouseholdID = {hid:String}) AS user_kwh,
+                        avg(d.Consumption) AS block_avg_kwh
+                FROM consumption_per_household_daily d
+                JOIN details_per_household hd ON d.HouseholdID = hd.HouseholdID
+                WHERE hd.PostalCode = {pc:String}
+                    AND d.Day BETWEEN {s:Date} AND {e_end:Date}
         GROUP BY d
         ORDER BY d ASC
         """,
@@ -136,13 +137,13 @@ def _weekly_comparison_month(client, postal_code: str, household_id: str, ref_da
     rows = client.query(
         """
         SELECT
-            toMonday(toDate(e.Timestamp)) AS wk,
-            sumIf(e.Consumption, e.HouseholdID = {hid:String}) / 7 AS user_avg,
-            avg(e.Consumption) * 48 AS block_avg
-        FROM household_electricity_usage e
-        JOIN household_data hd ON e.HouseholdID = hd.HouseholdID
-        WHERE hd.Postal_Code = {pc:String}
-          AND toDate(e.Timestamp) BETWEEN {s:Date} AND {e_end:Date}
+                        toMonday(d.Day) AS wk,
+                        avgIf(d.Consumption, d.HouseholdID = {hid:String}) AS user_avg,
+                        avg(d.Consumption) AS block_avg
+                FROM consumption_per_household_daily d
+                JOIN details_per_household hd ON d.HouseholdID = hd.HouseholdID
+                WHERE hd.PostalCode = {pc:String}
+                    AND d.Day BETWEEN {s:Date} AND {e_end:Date}
         GROUP BY wk
         ORDER BY wk ASC
         """,

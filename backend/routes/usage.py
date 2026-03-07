@@ -9,7 +9,9 @@ GET /api/usage/{user_id}?date=YYYY-MM-DD
 from datetime import date, datetime
 from fastapi import APIRouter, Query, HTTPException
 from database.clickhouse import get_client
+from config import settings
 from models.schemas import UsageResponse, HalfHourlyPoint
+from utils.datetime_helper import get_app_date
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
 
@@ -25,15 +27,14 @@ def _get_household_id(client, user_id: str) -> str:
     return row[0][0]
 
 
-@router.get("/{user_id}", response_model=UsageResponse)
+@router.get("/", response_model=UsageResponse)
 def get_usage(
-    user_id: str,
     query_date: str = Query(default=None, alias="date"),
 ):
     client = get_client()
-    household_id = _get_household_id(client, user_id)
+    household_id = _get_household_id(client, settings.user_id)
 
-    target_date = date.fromisoformat(query_date) if query_date else date.today()
+    target_date = date.fromisoformat(query_date) if query_date else get_app_date()
     date_str = target_date.isoformat()
 
     rows = client.query(

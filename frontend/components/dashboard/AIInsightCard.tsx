@@ -15,11 +15,11 @@ export default function AIInsightCard({ userId, date }: AIInsightCardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAIInsights(userId, date)
+    getAIInsights(date)
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [userId, date]);
+  }, [date]);
 
   if (loading) {
     return (

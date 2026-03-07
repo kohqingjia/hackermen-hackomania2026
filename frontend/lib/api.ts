@@ -29,30 +29,27 @@ export async function submitOnboarding(
   });
 }
 
-export async function getOnboarding(userId: string) {
-  return request<Record<string, unknown>>(`/api/onboarding/${userId}`);
+export async function getOnboarding() {
+  return request<Record<string, unknown>>(`/api/onboarding`);
 }
 
 // ---- Usage (Dashboard) ----
 
 export async function getUsage(
-  userId: string,
   date?: string,
 ): Promise<import("./types").UsageResponse> {
   const q = date ? `?date=${date}` : "";
-  return request<import("./types").UsageResponse>(`/api/usage/${userId}${q}`);
+  return request<import("./types").UsageResponse>(`/api/usage/${q}`);
 }
 
 // ---- Block View ----
 
 export async function getBlockUsage(
   postalCode: string,
-  userId: string,
   date?: string,
 ): Promise<import("./types").BlockUsageResponse> {
-  const params = new URLSearchParams({ user_id: userId });
-  if (date) params.set("date", date);
-  return request<import("./types").BlockUsageResponse>(`/api/block/${postalCode}?${params}`);
+  const q = date ? `?date=${date}` : "";
+  return request<import("./types").BlockUsageResponse>(`/api/block/${postalCode}${q}`);
 }
 
 // ---- Map View ----
@@ -78,9 +75,8 @@ export async function getLeaderboard(
 // ---- Challenges ----
 
 export async function getChallenges(
-  userId: string,
 ): Promise<import("./types").ChallengesResponse> {
-  return request<import("./types").ChallengesResponse>(`/api/challenges?user_id=${userId}`);
+  return request<import("./types").ChallengesResponse>(`/api/challenges`);
 }
 
 export async function completeChallenge(
@@ -95,41 +91,35 @@ export async function completeChallenge(
 // ---- AI ----
 
 export async function getAIInsights(
-  userId: string,
   date?: string,
 ): Promise<import("./types").AIInsightResponse> {
   const q = date ? `?date=${date}` : "";
-  return request<import("./types").AIInsightResponse>(`/api/ai/insights/${userId}${q}`);
+  return request<import("./types").AIInsightResponse>(`/api/ai/insights${q}`);
 }
 
 export async function getAIRecommendations(
-  userId: string,
 ): Promise<import("./types").AIRecommendResponse> {
-  return request<import("./types").AIRecommendResponse>(`/api/ai/recommend/${userId}`);
+  return request<import("./types").AIRecommendResponse>(`/api/ai/recommend`);
 }
 
 export async function getAIMonthlyAnalysis(
-  userId: string,
 ): Promise<import("./types").AIMonthlyAnalysisResponse> {
-  return request<import("./types").AIMonthlyAnalysisResponse>(`/api/ai/analyze/${userId}`);
+  return request<import("./types").AIMonthlyAnalysisResponse>(`/api/ai/analyze`);
 }
 
 // ---- Insights ----
 
 export async function getAnomaly(
-  userId: string,
 ): Promise<import("./types").AnomalyResponse> {
-  return request<import("./types").AnomalyResponse>(`/api/ai/anomaly/${userId}`);
+  return request<import("./types").AnomalyResponse>(`/api/ai/anomaly`);
 }
 
 export async function getProjections(
-  userId: string,
 ): Promise<import("./types").ProjectionsResponse> {
-  return request<import("./types").ProjectionsResponse>(`/api/ai/projections/${userId}`);
+  return request<import("./types").ProjectionsResponse>(`/api/ai/projections`);
 }
 
 export async function getHouseholdBenchmark(
-  userId: string,
 ): Promise<import("./types").HouseholdBenchmarkResponse> {
-  return request<import("./types").HouseholdBenchmarkResponse>(`/api/ai/benchmark/${userId}`);
+  return request<import("./types").HouseholdBenchmarkResponse>(`/api/ai/benchmark`);
 }
