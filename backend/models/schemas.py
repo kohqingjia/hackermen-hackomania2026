@@ -78,11 +78,24 @@ class LeaderboardEntry(BaseModel):
     weekly_change: float    # kwh change vs previous week
 
 
+class WeeklyTopBlock(BaseModel):
+    rank: int
+    block_id: str
+    avg_kwh: float
+
+
+class WeeklyTopThree(BaseModel):
+    week_start: str
+    winners: list[WeeklyTopBlock]
+    block_avg_kwh_by_block: dict[str, float]
+
+
 class LeaderboardResponse(BaseModel):
     week_start: str
     district: str
     district_avg_kwh: float  # average across the district for the week
     entries: list[LeaderboardEntry]
+    weekly_top3_history: list[WeeklyTopThree]
     resets_in_days: int
 
 

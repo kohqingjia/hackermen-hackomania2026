@@ -8,7 +8,7 @@ GET /api/leaderboard/{district}
 from datetime import date, timedelta
 from fastapi import APIRouter, Query
 from database.clickhouse import get_client
-from models.schemas import LeaderboardResponse, LeaderboardEntry
+from models.schemas import LeaderboardResponse, LeaderboardEntry, WeeklyTopThree, WeeklyTopBlock
 
 router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
@@ -100,6 +100,41 @@ def get_leaderboard(
 
     district_avg_kwh = round(sum(avg for _, avg in current) / len(current), 3) if current else 0.0
 
+    weekly_top3_history = []
+    for week_offset in range(1, 6):
+        hist_week_start = week_start - timedelta(days=week_offset * 7)
+        hist_week_end = hist_week_start + timedelta(days=6)
+        week_rows = client.query(
+            """
+            SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg
+            FROM energy_usage
+            WHERE district = {dist:String}
+              AND toDate(timestamp) BETWEEN {ws:Date} AND {we:Date}
+            GROUP BY block_id
+            ORDER BY daily_avg ASC
+            """,
+            parameters={
+                "dist": district,
+                "ws": hist_week_start.isoformat(),
+                "we": hist_week_end.isoformat(),
+            },
+        ).result_rows
+
+        top3_rows = week_rows[:3]
+        winners = [
+            WeeklyTopBlock(rank=i, block_id=block_id, avg_kwh=round(avg_kwh, 3))
+            for i, (block_id, avg_kwh) in enumerate(top3_rows, start=1)
+        ]
+        block_avg_kwh_by_block = {
+            block_id: round(avg_kwh, 3)
+            for block_id, avg_kwh in week_rows
+        }
+        weekly_top3_history.append(WeeklyTopThree(
+            week_start=hist_week_start.isoformat(),
+            winners=winners,
+            block_avg_kwh_by_block=block_avg_kwh_by_block,
+        ))
+
     next_monday = week_start + timedelta(days=7)
     resets_in = (next_monday - target_date).days
 
@@ -108,5 +143,6 @@ def get_leaderboard(
         district=district,
         district_avg_kwh=district_avg_kwh,
         entries=entries,
+        weekly_top3_history=weekly_top3_history,
         resets_in_days=resets_in,
     )
