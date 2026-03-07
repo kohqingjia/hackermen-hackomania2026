@@ -1,21 +1,39 @@
 """
 AI routes
-GET /api/ai/insights/{user_id}?date=YYYY-MM-DD    — daily usage insight + tip
-GET /api/ai/recommend/{user_id}                    — personalised recommendations
-GET /api/ai/analyze/{user_id}                      — monthly usage analysis
+GET  /api/ai/insights/{user_id}?date=YYYY-MM-DD    — daily usage insight + tip
+GET  /api/ai/recommend/{user_id}                    — personalised recommendations
+GET  /api/ai/analyze/{user_id}                      — monthly usage analysis
+POST /api/ai/chat                                   — freeform AI coach chat
 """
 
 from datetime import date, timedelta, datetime
 from fastapi import APIRouter, Query, HTTPException
+from pydantic import BaseModel
 from database.clickhouse import get_client
 from services.openai_service import (
     generate_usage_insight,
     generate_recommendations,
     generate_monthly_analysis,
+    chat_with_coach,
 )
 from models.schemas import AIInsightResponse, AIRecommendResponse, AIMonthlyAnalysisResponse, AIRecommendation
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    user_id: str | None = None
+    history: list[ChatMessage] = []
+
+
+class ChatResponse(BaseModel):
+    reply: str
 
 
 def _get_user(client, user_id: str) -> dict:
@@ -164,3 +182,59 @@ def get_monthly_analysis(user_id: str):
         narrative=narrative,
         generated_at=datetime.utcnow().isoformat(),
     )
+
+
+@router.post("/chat", response_model=ChatResponse)
+def ai_chat(req: ChatRequest):
+    user_context = ""
+    if req.user_id:
+        try:
+            db = get_client()
+            user = _get_user(db, req.user_id)
+            today = date.today()
+            yesterday = today - timedelta(days=1)
+            idx = int(req.user_id.replace("-", "")[:4], 16) % 10
+            household_id = f"{user['block_id']}-HH{idx:02d}"
+
+            def _scalar(sql, params):
+                rows = db.query(sql, parameters=params).result_rows
+                return float(rows[0][0] or 0) if rows else 0.0
+
+            today_kwh = _scalar(
+                "SELECT sum(electricity_kwh) FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date}",
+                {"hid": household_id, "d": today.isoformat()},
+            )
+            yesterday_kwh = _scalar(
+                "SELECT sum(electricity_kwh) FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date}",
+                {"hid": household_id, "d": yesterday.isoformat()},
+            )
+            block_avg_kwh = _scalar(
+                "SELECT avg(electricity_kwh)*48 FROM energy_usage WHERE block_id={bid:String} AND toDate(timestamp)={d:Date}",
+                {"bid": user["block_id"], "d": today.isoformat()},
+            )
+            # peak hour
+            peak_rows = db.query(
+                "SELECT timestamp FROM energy_usage WHERE household_id={hid:String} AND toDate(timestamp)={d:Date} ORDER BY electricity_kwh DESC LIMIT 1",
+                parameters={"hid": household_id, "d": today.isoformat()},
+            ).result_rows
+            peak_hour = peak_rows[0][0].strftime("%H:%M") if peak_rows else "N/A"
+
+            diff_block = today_kwh - block_avg_kwh
+            diff_yesterday = today_kwh - yesterday_kwh
+
+            user_context = (
+                f"User profile: {user['household_type']} HDB flat in {user['block_id']}, "
+                f"age group {user['age_group']}, energy saving target {user['energy_saving_target']}%. "
+                f"Today's usage so far: {today_kwh:.2f} kWh (peak at {peak_hour}). "
+                f"Block average today: {block_avg_kwh:.2f} kWh "
+                f"({'above' if diff_block > 0 else 'below'} block average by {abs(diff_block):.2f} kWh). "
+                f"Yesterday's total: {yesterday_kwh:.2f} kWh "
+                f"({'up' if diff_yesterday > 0 else 'down'} {abs(diff_yesterday):.2f} kWh vs yesterday). "
+                "Use these REAL numbers when answering questions about their usage."
+            )
+        except Exception:
+            pass
+
+    history = [{"role": m.role, "content": m.content} for m in req.history]
+    reply = chat_with_coach(req.message, history, user_context)
+    return ChatResponse(reply=reply)
