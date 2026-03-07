@@ -68,16 +68,25 @@ def _build_user_context() -> str:
         db = get_client()
 
         # ── User profile ──
+        uid = _active_user_id
         row = db.query(
             "SELECT block_id, household_type, age_group, energy_saving_target "
             "FROM users WHERE user_id={uid:String} LIMIT 1",
-            parameters={"uid": _active_user_id},
+            parameters={"uid": uid},
         ).result_rows
+        if not row:
+            # Fall back to demo user (e.g. after server restart clears in-memory mock data)
+            uid = FALLBACK_USER_ID
+            row = db.query(
+                "SELECT block_id, household_type, age_group, energy_saving_target "
+                "FROM users WHERE user_id={uid:String} LIMIT 1",
+                parameters={"uid": uid},
+            ).result_rows
         if not row:
             return ""
         block_id, household_type, age_group, target = row[0][:4]
 
-        idx = int(_active_user_id.replace("-", "")[:4], 16) % 10
+        idx = int(uid.replace("-", "")[:4], 16) % 10
         household_id = f"{block_id}-HH{idx:02d}"
         today = date.today()
         yesterday = today - timedelta(days=1)

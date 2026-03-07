@@ -65,6 +65,57 @@ App runs at http://localhost:3000, API at http://localhost:8000
 
 ---
 
+### AI Coach (LibreChat)
+
+The floating chat widget is powered by [LibreChat](https://github.com/danny-avila/LibreChat) running in Docker, proxied through nginx so it can be embedded in an iframe.
+
+**Prerequisites:** Docker Desktop installed and running.
+
+**1. Create a root `.env` file** (same level as `docker-compose.librechat.yml`):
+
+```bash
+# .env  (gitignored — never commit this)
+OPENAI_API_KEY=sk-proj-...your-key-here...
+```
+
+**2. Start LibreChat:**
+
+```bash
+docker compose -f docker-compose.librechat.yml up -d
+```
+
+This starts three containers:
+- `mongodb` — stores LibreChat chat history
+- `librechat` — the chat UI on internal port 3080
+- `librechat-proxy` — nginx that strips `X-Frame-Options` and exposes port **3090**
+
+**3. Set the frontend env var:**
+
+```bash
+# frontend/.env.local
+NEXT_PUBLIC_LIBRECHAT_URL=http://localhost:3090
+```
+
+LibreChat is now accessible at http://localhost:3090 and embedded in the chat widget.
+
+**How it connects to ClickHouse:**
+LibreChat → FastAPI `/v1/chat/completions` → GPT-4o with live ClickHouse data injected into every message.
+The FastAPI backend must be running (`uvicorn main:app --reload --port 8000` in `backend/`).
+
+**Stop LibreChat:**
+
+```bash
+docker compose -f docker-compose.librechat.yml down
+```
+
+**Troubleshoot:** If the chat widget shows "AI Coach not running", make sure Docker Desktop is open and the containers are up:
+
+```bash
+docker compose -f docker-compose.librechat.yml ps
+```
+
+---
+
 ## SP Colour Palette
 
 | Role | Hex |
