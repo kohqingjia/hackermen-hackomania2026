@@ -46,7 +46,11 @@ export default function MapPage() {
       {loading ? (
         <div className="h-72 animate-pulse bg-sp-chart rounded-2xl" />
       ) : mapData ? (
-        <BlockMap blocks={mapData.blocks} userBlockId={userBlockId} />
+        <BlockMap
+          blocks={mapData.blocks}
+          userBlockId={userBlockId}
+          onBlockSelect={setSelected}
+        />
       ) : null}
 
       {/* Block list — sorted by rank */}
