@@ -15,13 +15,25 @@ import {
   MOCK_MAP,
   MOCK_LEADERBOARD,
   MOCK_CHALLENGES,
-  MOCK_COMPLETE_CHALLENGE,
   MOCK_AI_INSIGHTS,
   MOCK_AI_RECOMMENDATIONS,
   MOCK_AI_MONTHLY_ANALYSIS,
 } from "./mockData";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const mockChallengesState: import("./types").ChallengesResponse = {
+  ...MOCK_CHALLENGES,
+  challenges: MOCK_CHALLENGES.challenges.map((challenge) => ({ ...challenge })),
+};
+
+function cloneChallengesState(userId: string): import("./types").ChallengesResponse {
+  return {
+    ...mockChallengesState,
+    user_id: userId,
+    challenges: mockChallengesState.challenges.map((challenge) => ({ ...challenge })),
+  };
+}
 
 /** Generic fetch helper — kept for when real backend is connected. */
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -105,7 +117,7 @@ export async function getChallenges(
   userId: string,
 ): Promise<import("./types").ChallengesResponse> {
   // return request<import("./types").ChallengesResponse>(`/api/challenges?user_id=${userId}`);
-  return { ...MOCK_CHALLENGES, user_id: userId };
+  return cloneChallengesState(userId);
 }
 
 export async function completeChallenge(
@@ -115,7 +127,37 @@ export async function completeChallenge(
   //   method: "POST",
   //   body: JSON.stringify(data),
   // });
-  return MOCK_COMPLETE_CHALLENGE;
+  const challenge = mockChallengesState.challenges.find((c) => c.challenge_id === data.challenge_id);
+
+  if (!challenge) {
+    return {
+      success: false,
+      points_earned: 0,
+      total_points: mockChallengesState.total_points,
+      message: "Challenge not found.",
+    };
+  }
+
+  if (challenge.is_completed) {
+    return {
+      success: true,
+      points_earned: 0,
+      total_points: mockChallengesState.total_points,
+      message: "Challenge already completed.",
+    };
+  }
+
+  challenge.is_completed = true;
+  challenge.completed_at = new Date().toISOString();
+  mockChallengesState.total_points += challenge.points;
+  mockChallengesState.weekly_points += challenge.points;
+
+  return {
+    success: true,
+    points_earned: challenge.points,
+    total_points: mockChallengesState.total_points,
+    message: "Great job! Keep going 💪",
+  };
 }
 
 // ---- AI ----
