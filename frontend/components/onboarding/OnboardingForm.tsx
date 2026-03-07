@@ -30,9 +30,9 @@ export default function OnboardingForm() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      //const res = await submitOnboarding(form);
-      localStorage.setItem("powerblock_user_id", "123");
-      localStorage.setItem("powerblock_block_id", "456");
+      const res = await submitOnboarding(form);
+      localStorage.setItem("powerblock_user_id", res.user_id);
+      localStorage.setItem("powerblock_block_id", form.block_id);
       router.push("/dashboard");
     } catch (e) {
       console.error(e);
