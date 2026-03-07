@@ -142,13 +142,14 @@ export default function MapPage() {
               )}
             >
               <span className={clsx(
-                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold",
+                "w-7 h-7 rounded-full flex items-center justify-center font-bold",
+                block.rank <= 3 ? "text-lg" : "text-xs",
                 block.rank === 1 ? "bg-yellow-100 text-yellow-700" :
                 block.rank === 2 ? "bg-gray-100 text-gray-600" :
                 block.rank === 3 ? "bg-orange-100 text-orange-700" :
                 "bg-gray-50 text-sp-text-secondary"
               )}>
-                {block.rank}
+                {block.rank === 1 ? "🥇" : block.rank === 2 ? "🥈" : block.rank === 3 ? "🥉" : block.rank}
               </span>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-sp-text">
