@@ -7,10 +7,13 @@
  */
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Card, { LoadingCard } from "@/components/shared/Card";
 import ChallengeCard from "@/components/challenges/ChallengeCard";
 import SubmitPhotoModal from "@/components/challenges/SubmitPhotoModal";
+import LeafIcon from "@/components/shared/LeafIcon";
 import { getChallenges, completeChallenge } from "@/lib/api";
 import type { ChallengesResponse, Challenge } from "@/lib/types";
 
@@ -21,9 +24,12 @@ export default function ChallengesPage() {
   const [loading, setLoading] = useState(true);
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ReactNode | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+
     const uid = localStorage.getItem("powerblock_user_id");
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
@@ -39,7 +45,13 @@ export default function ChallengesPage() {
     setSubmitting(true);
     try {
       const res = await completeChallenge({ user_id: userId, challenge_id: challengeId, photo_base64: photoBase64 });
-      setToast(`+${res.points_earned} pts! ${res.message}`);
+      setToast(
+        <span className="inline-flex items-center justify-center gap-1">
+          <span>+{res.points_earned}</span>
+          <LeafIcon className="w-4 h-4 text-green-200" />
+          <span>{res.message}</span>
+        </span>
+      );
       setActiveChallenge(null);
       // Refresh challenges
       const updated = await getChallenges(userId);
@@ -60,20 +72,28 @@ export default function ChallengesPage() {
       {/* Header */}
       <div>
         <p className="text-xs text-sp-text-secondary uppercase tracking-wide">Challenges</p>
-        <h1 className="text-xl font-bold text-sp-text mt-0.5">Earn GreenUP Points</h1>
+        <h1 className="text-xl font-bold text-sp-text mt-0.5 inline-flex items-center gap-1">
+          <span>Earn GreenUP</span>
+          <LeafIcon className="w-5 h-5 text-green-600" />
+        </h1>
         <p className="text-xs text-sp-text-secondary">Complete challenges to earn points for your block</p>
       </div>
 
       {/* Points summary */}
       {data && (
         <div className="grid grid-cols-2 gap-3">
-          <Card className="text-center py-3">
-            <p className="text-2xl font-bold text-sp-teal">{data.total_points}</p>
-            <p className="text-[10px] text-sp-text-secondary uppercase tracking-wide mt-0.5">Total Points</p>
+          <Card className="text-center py-4 min-h-[88px] flex flex-col items-center justify-center">
+            <p className="text-2xl font-bold text-sp-teal inline-flex items-center gap-1 justify-center leading-none">
+              <span>{data.total_points}</span>
+              <LeafIcon className="w-5 h-5 text-green-600" />
+            </p>
+            <p className="pt-1 text-[12px] text-sp-text-secondary uppercase tracking-wide mt-1 inline-flex items-center gap-1 justify-center leading-none">
+              <span>Total</span>
+            </p>
           </Card>
-          <Card className="text-center py-3">
-            <p className="text-2xl font-bold text-sp-text">{completed.length}/{data.challenges.length}</p>
-            <p className="text-[10px] text-sp-text-secondary uppercase tracking-wide mt-0.5">Completed</p>
+          <Card className="text-center py-4 min-h-[88px] flex flex-col items-center justify-center">
+            <p className="text-2xl font-bold text-sp-text leading-none">{completed.length}/{data.challenges.length}</p>
+            <p className="pt-1 text-[12px] text-sp-text-secondary uppercase tracking-wide mt-1 leading-none">Completed</p>
           </Card>
         </div>
       )}
@@ -124,10 +144,16 @@ export default function ChallengesPage() {
       )}
 
       {/* Toast notification */}
-      {toast && (
-        <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto bg-sp-teal text-white text-sm font-medium px-4 py-3 rounded-2xl shadow-lg text-center z-50">
-          {toast}
-        </div>
+      {isMounted && toast && createPortal(
+        <div className="fixed inset-0 z-[90] pointer-events-none">
+          <div
+            className="absolute left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-md bg-sp-teal text-white text-sm font-medium px-4 py-3 rounded-2xl shadow-lg text-center"
+            style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}
+          >
+            {toast}
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
