@@ -116,11 +116,94 @@ const weekStart = new Date();
 weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
 const daysUntilReset = 7 - ((new Date().getDay() + 6) % 7); // days until next Monday
 
+const pastWeeks = Array.from({ length: 5 }, (_, i) => {
+  const d = new Date(weekStart);
+  d.setDate(d.getDate() - ((i + 1) * 7));
+  return d.toISOString().slice(0, 10);
+});
+
 export const MOCK_LEADERBOARD: LeaderboardResponse = {
   week_start: weekStart.toISOString().slice(0, 10),
   district: "Yishun",
   district_avg_kwh: 19.28,
   resets_in_days: daysUntilReset,
+  weekly_top3_history: [
+    {
+      week_start: pastWeeks[0],
+      winners: [
+        { rank: 1, block_id: "BLK404", avg_kwh: 16.8 },
+        { rank: 2, block_id: "BLK402", avg_kwh: 18.45 },
+        { rank: 3, block_id: "BLK405", avg_kwh: 19.7 },
+      ],
+      block_avg_kwh_by_block: {
+        BLK404: 16.8,
+        BLK402: 18.45,
+        BLK405: 19.7,
+        BLK403: 20.2,
+        BLK406: 21.1,
+      },
+    },
+    {
+      week_start: pastWeeks[1],
+      winners: [
+        { rank: 1, block_id: "BLK402", avg_kwh: 17.1 },
+        { rank: 2, block_id: "BLK404", avg_kwh: 17.65 },
+        { rank: 3, block_id: "BLK405", avg_kwh: 19.2 },
+      ],
+      block_avg_kwh_by_block: {
+        BLK402: 17.1,
+        BLK404: 17.65,
+        BLK405: 19.2,
+        BLK403: 19.9,
+        BLK406: 20.7,
+      },
+    },
+    {
+      week_start: pastWeeks[2],
+      winners: [
+        { rank: 1, block_id: "BLK405", avg_kwh: 17.5 },
+        { rank: 2, block_id: "BLK404", avg_kwh: 17.9 },
+        { rank: 3, block_id: "BLK403", avg_kwh: 19.4 },
+      ],
+      block_avg_kwh_by_block: {
+        BLK405: 17.5,
+        BLK404: 17.9,
+        BLK403: 19.4,
+        BLK402: 19.8,
+        BLK406: 20.6,
+      },
+    },
+    {
+      week_start: pastWeeks[3],
+      winners: [
+        { rank: 1, block_id: "BLK404", avg_kwh: 16.95 },
+        { rank: 2, block_id: "BLK405", avg_kwh: 18.6 },
+        { rank: 3, block_id: "BLK402", avg_kwh: 18.85 },
+      ],
+      block_avg_kwh_by_block: {
+        BLK404: 16.95,
+        BLK405: 18.6,
+        BLK402: 18.85,
+        BLK403: 20.1,
+        BLK406: 20.8,
+      },
+    },
+    {
+      week_start: pastWeeks[4],
+      winners: [
+        { rank: 1, block_id: "BLK402", avg_kwh: 17.35 },
+        { rank: 2, block_id: "BLK404", avg_kwh: 17.72 },
+        { rank: 3, block_id: "BLK406", avg_kwh: 20.1 },
+      ],
+      block_avg_kwh_by_block: {
+        BLK402: 17.35,
+        BLK404: 17.72,
+        BLK406: 20.1,
+        BLK405: 20.35,
+        BLK403: 20.55,
+      },
+    },
+  ],
   entries: [
     { rank: 1, block_id: "BLK404", avg_kwh: 16.80, reduction_pct: 12, points: 320, weekly_change: -2.1 },
     { rank: 2, block_id: "BLK402", avg_kwh: 18.45, reduction_pct: 8,  points: 275, weekly_change: -1.5 },
