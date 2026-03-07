@@ -9,11 +9,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Card, { SectionHeader, LoadingCard } from "@/components/shared/Card";
-import BlockComparisonChart from "@/components/block/BlockComparisonChart";
+import BlockComparisonChart, { type ChartVariant } from "@/components/block/BlockComparisonChart";
 import BlockStats from "@/components/block/BlockStats";
 import AIInsightCard from "@/components/dashboard/AIInsightCard";
 import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
+import clsx from "clsx";
 import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
 
@@ -25,6 +26,13 @@ export default function DashboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
+  const [chartVariant, setChartVariant] = useState<ChartVariant>("per-day");
+
+  const variantSubtitle: Record<ChartVariant, string> = {
+    "per-day": "Half-hourly usage today",
+    day: "Daily average this week",
+    week: "Weekly average this month",
+  };
 
   useEffect(() => {
     const uid = localStorage.getItem("powerblock_user_id");
@@ -68,14 +76,40 @@ export default function DashboardPage() {
       <Card>
         <SectionHeader
           title="Usage Comparison"
-          subtitle="Your usage vs block average today"
+          subtitle={variantSubtitle[chartVariant]}
         />
+        <div className="inline-flex bg-sp-bg rounded-xl p-1 border border-gray-200 mb-3">
+          {([
+            { key: "per-day", label: "Per Day" },
+            { key: "day", label: "Day" },
+            { key: "week", label: "Week" },
+          ] as const).map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setChartVariant(item.key)}
+              className={clsx(
+                "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+                chartVariant === item.key
+                  ? "bg-white text-sp-teal shadow-sm"
+                  : "text-sp-text-secondary hover:text-sp-text"
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
         {loadingUsage ? (
           <div className="h-44 animate-pulse bg-sp-chart rounded-xl" />
         ) : blockUsage ? (
           <BlockComparisonChart
-            userSeries={blockUsage.hourly_user}
-            blockSeries={blockUsage.hourly_block_avg}
+            perDayUserSeries={blockUsage.hourly_user}
+            perDayBlockSeries={blockUsage.hourly_block_avg}
+            dayChartSeries={blockUsage.daily_comparison_week}
+            weekChartSeries={blockUsage.weekly_comparison_month}
+            variant={chartVariant}
+            onVariantChange={setChartVariant}
+            showVariantTabs={false}
           />
         ) : (
           <p className="text-sm text-sp-text-secondary text-center py-8">No data available today</p>

@@ -18,6 +18,9 @@ import type {
   AIInsightResponse,
   AIRecommendResponse,
   AIMonthlyAnalysisResponse,
+  AnomalyResponse,
+  ProjectionsResponse,
+  HouseholdBenchmarkResponse,
 } from "./types";
 
 // ──────────────────────────────────────────
@@ -82,6 +85,23 @@ const blockAvgTotal = +blockAvgData.reduce((s, p) => s + p.electricity_kwh, 0).t
 const diffKwh = +(userBlockTotal - blockAvgTotal).toFixed(2);
 const diffPct = +((diffKwh / blockAvgTotal) * 100).toFixed(1);
 
+const weeklyDayComparison = [
+  { day_label: "Mon", user_avg_kwh: 7.9, block_avg_kwh: 8.4 },
+  { day_label: "Tue", user_avg_kwh: 8.2, block_avg_kwh: 8.6 },
+  { day_label: "Wed", user_avg_kwh: 7.8, block_avg_kwh: 8.3 },
+  { day_label: "Thu", user_avg_kwh: 8.0, block_avg_kwh: 8.5 },
+  { day_label: "Fri", user_avg_kwh: 8.4, block_avg_kwh: 8.8 },
+  { day_label: "Sat", user_avg_kwh: 8.7, block_avg_kwh: 9.1 },
+  { day_label: "Sun", user_avg_kwh: 8.3, block_avg_kwh: 8.9 },
+];
+
+const monthlyWeekComparison = [
+  { week_label: "W1", user_avg_kwh: 55.8, block_avg_kwh: 60.5 },
+  { week_label: "W2", user_avg_kwh: 58.1, block_avg_kwh: 61.2 },
+  { week_label: "W3", user_avg_kwh: 56.9, block_avg_kwh: 60.7 },
+  { week_label: "W4", user_avg_kwh: 57.4, block_avg_kwh: 61.0 },
+];
+
 export const MOCK_BLOCK_USAGE: BlockUsageResponse = {
   block_id: "BLK404",
   date: TODAY,
@@ -91,6 +111,8 @@ export const MOCK_BLOCK_USAGE: BlockUsageResponse = {
   difference_pct: diffPct,
   hourly_block_avg: blockAvgData,
   hourly_user: userUsageData,
+  daily_comparison_week: weeklyDayComparison,
+  weekly_comparison_month: monthlyWeekComparison,
 };
 
 // ──────────────────────────────────────────
@@ -297,4 +319,60 @@ export const MOCK_AI_MONTHLY_ANALYSIS: AIMonthlyAnalysisResponse = {
 export const MOCK_ONBOARDING_RESPONSE: OnboardingResponse = {
   user_id: "123",
   message: "Welcome to PowerBlock! Your profile has been created.",
+};
+
+// ──────────────────────────────────────────
+// Anomaly Detection (Insights)
+// ──────────────────────────────────────────
+
+export const MOCK_ANOMALY: AnomalyResponse = {
+  user_id: "123",
+  has_anomaly: true,
+  analysis:
+    "We detected an unusual spike in your electricity usage on Tuesday between 2 AM and 4 AM — " +
+    "consumption was 3x higher than your typical pattern for that time. " +
+    "This could indicate an appliance left running overnight (e.g. water heater, dryer). " +
+    "Check that no appliances are running unintentionally during sleeping hours.",
+  generated_at: new Date().toISOString(),
+};
+
+export const MOCK_ANOMALY_OK: AnomalyResponse = {
+  user_id: "123",
+  has_anomaly: false,
+  analysis:
+    "Your electricity usage patterns this week look normal. No unusual spikes or " +
+    "unexpected consumption detected. Keep up the good habits!",
+  generated_at: new Date().toISOString(),
+};
+
+// ──────────────────────────────────────────
+// Projections (Insights)
+// ──────────────────────────────────────────
+
+const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+const dayOfMonth = new Date().getDate();
+const daysRemaining = daysInMonth - dayOfMonth;
+
+export const MOCK_PROJECTIONS: ProjectionsResponse = {
+  user_id: "123",
+  projected_bill_sgd: 81.05,
+  projected_avg_daily_kwh: 8.19,
+  projected_total_kwh: 245.6,
+  days_remaining: daysRemaining,
+  target_bill_sgd: 95.00,
+  generated_at: new Date().toISOString(),
+};
+
+// ──────────────────────────────────────────
+// Household Benchmark (Insights)
+// ──────────────────────────────────────────
+
+export const MOCK_HOUSEHOLD_BENCHMARK: HouseholdBenchmarkResponse = {
+  user_id: "123",
+  household_type: "4-room",
+  district: "Yishun",
+  user_avg_daily_kwh: 8.19,
+  profile_avg_daily_kwh: 8.62,
+  difference_pct: -5.0,
+  generated_at: new Date().toISOString(),
 };

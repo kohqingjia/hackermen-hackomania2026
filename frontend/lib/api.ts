@@ -18,6 +18,9 @@ import {
   MOCK_AI_INSIGHTS,
   MOCK_AI_RECOMMENDATIONS,
   MOCK_AI_MONTHLY_ANALYSIS,
+  MOCK_ANOMALY,
+  MOCK_PROJECTIONS,
+  MOCK_HOUSEHOLD_BENCHMARK,
 } from "./mockData";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -183,4 +186,27 @@ export async function getAIMonthlyAnalysis(
 ): Promise<import("./types").AIMonthlyAnalysisResponse> {
   // return request<import("./types").AIMonthlyAnalysisResponse>(`/api/ai/analyze/${userId}`);
   return MOCK_AI_MONTHLY_ANALYSIS;
+}
+
+// ---- Insights ----
+
+export async function getAnomaly(
+  userId: string,
+): Promise<import("./types").AnomalyResponse> {
+  // return request<import("./types").AnomalyResponse>(`/api/ai/anomaly/${userId}`);
+  return MOCK_ANOMALY;
+}
+
+export async function getProjections(
+  userId: string,
+): Promise<import("./types").ProjectionsResponse> {
+  // return request<import("./types").ProjectionsResponse>(`/api/ai/projections/${userId}`);
+  return MOCK_PROJECTIONS;
+}
+
+export async function getHouseholdBenchmark(
+  userId: string,
+): Promise<import("./types").HouseholdBenchmarkResponse> {
+  // return request<import("./types").HouseholdBenchmarkResponse>(`/api/ai/benchmark/${userId}`);
+  return MOCK_HOUSEHOLD_BENCHMARK;
 }

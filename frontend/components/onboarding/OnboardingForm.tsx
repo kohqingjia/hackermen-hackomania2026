@@ -124,7 +124,7 @@ export default function OnboardingForm() {
         </select>
       </div>
       <label className="text-sm text-sp-text-secondary mb-2 block">Reduce electricity bill by:</label>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2 mb-4">
         {TARGETS.map((t) => (
           <SelectButton
             key={t}
@@ -133,6 +133,22 @@ export default function OnboardingForm() {
             onClick={() => update("energy_saving_target", t)}
           />
         ))}
+      </div>
+      <div className="mt-4">
+        <label className="text-sm text-sp-text-secondary mb-1 block">Monthly bill target (optional)</label>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sp-text-secondary text-sm">S$</span>
+          <input
+            type="number"
+            min={0}
+            step={5}
+            placeholder="e.g. 95"
+            value={form.target_bill_sgd ?? ""}
+            onChange={(e) => update("target_bill_sgd", e.target.value ? parseFloat(e.target.value) : undefined)}
+            className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal"
+          />
+        </div>
+        <p className="text-xs text-sp-text-secondary mt-1.5">We'll track your projected bill against this target</p>
       </div>
     </StepWrapper>,
   ];

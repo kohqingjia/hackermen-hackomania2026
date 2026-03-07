@@ -6,6 +6,7 @@ export interface OnboardingForm {
   num_tenants?: number;
   work_from_home: boolean;
   energy_saving_target: number;
+  target_bill_sgd?: number;
   block_id: string;
   district: string;
 }
@@ -43,6 +44,20 @@ export interface BlockUsageResponse {
   difference_pct: number;
   hourly_block_avg: HalfHourlyPoint[];
   hourly_user: HalfHourlyPoint[];
+  daily_comparison_week: DailyComparisonPoint[];
+  weekly_comparison_month: WeeklyComparisonPoint[];
+}
+
+export interface DailyComparisonPoint {
+  day_label: string;
+  user_avg_kwh: number;
+  block_avg_kwh: number;
+}
+
+export interface WeeklyComparisonPoint {
+  week_label: string;
+  user_avg_kwh: number;
+  block_avg_kwh: number;
 }
 
 // ---- Map ----
@@ -148,5 +163,34 @@ export interface AIMonthlyAnalysisResponse {
   projected_bill_sgd: number;
   budget_sgd: number;
   narrative: string;
+  generated_at: string;
+}
+
+// ---- Insights ----
+
+export interface AnomalyResponse {
+  user_id: string;
+  has_anomaly: boolean;
+  analysis: string;
+  generated_at: string;
+}
+
+export interface ProjectionsResponse {
+  user_id: string;
+  projected_bill_sgd: number;
+  projected_avg_daily_kwh: number;
+  projected_total_kwh: number;
+  days_remaining: number;
+  target_bill_sgd?: number;
+  generated_at: string;
+}
+
+export interface HouseholdBenchmarkResponse {
+  user_id: string;
+  household_type: string;
+  district: string;
+  user_avg_daily_kwh: number;
+  profile_avg_daily_kwh: number;
+  difference_pct: number;
   generated_at: string;
 }

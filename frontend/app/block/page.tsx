@@ -62,8 +62,10 @@ export default function BlockPage() {
           <div className="h-48 animate-pulse bg-sp-chart rounded-xl" />
         ) : data ? (
           <BlockComparisonChart
-            userSeries={data.hourly_user}
-            blockSeries={data.hourly_block_avg}
+            perDayUserSeries={data.hourly_user}
+            perDayBlockSeries={data.hourly_block_avg}
+            dayChartSeries={data.daily_comparison_week}
+            weekChartSeries={data.weekly_comparison_month}
           />
         ) : null}
       </Card>
