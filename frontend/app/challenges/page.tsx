@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Card, { LoadingCard } from "@/components/shared/Card";
 import ChallengeCard from "@/components/challenges/ChallengeCard";
@@ -24,8 +25,11 @@ export default function ChallengesPage() {
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<ReactNode | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+
     const uid = localStorage.getItem("powerblock_user_id");
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
@@ -140,10 +144,16 @@ export default function ChallengesPage() {
       )}
 
       {/* Toast notification */}
-      {toast && (
-        <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto bg-sp-teal text-white text-sm font-medium px-4 py-3 rounded-2xl shadow-lg text-center z-50">
-          {toast}
-        </div>
+      {isMounted && toast && createPortal(
+        <div className="fixed inset-0 z-[90] pointer-events-none">
+          <div
+            className="absolute left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-md bg-sp-teal text-white text-sm font-medium px-4 py-3 rounded-2xl shadow-lg text-center"
+            style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}
+          >
+            {toast}
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
