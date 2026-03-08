@@ -13,6 +13,7 @@ from models.schemas import OnboardingRequest, OnboardingResponse
 from services.onemap_service import get_road_names_batch
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
+ENV_USER_ID = (settings.user_id or "").strip()
 
 NO_CACHE_HEADERS = {
     "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -29,7 +30,7 @@ def create_onboarding(data: OnboardingRequest):
             detail="HOUSEHOLD_ID is required in backend env before onboarding can begin.",
         )
 
-    configured_user_id = (settings.user_id or "").strip()
+    configured_user_id = ENV_USER_ID
     user_id = configured_user_id or str(uuid.uuid4())
     household_id = settings.household_id
     client = get_client()
@@ -50,12 +51,10 @@ def create_onboarding(data: OnboardingRequest):
         parameters={"hid": household_id},
     ).result_rows
     if existing:
-        found_uid = str(existing[0][0])
-        settings.user_id = found_uid          # session-only, lost on restart
-        return OnboardingResponse(
-            user_id=found_uid,
-            message="Existing onboarding profile found for HOUSEHOLD_ID.",
-        )
+        # Existing profiles may contain key columns that cannot be updated in-place.
+        # Create a new user profile row so latest onboarding selections (e.g. flat_type)
+        # are always reflected immediately across analytics endpoints.
+        user_id = str(uuid.uuid4())
 
     # Insert into details_per_household
     client.insert(
