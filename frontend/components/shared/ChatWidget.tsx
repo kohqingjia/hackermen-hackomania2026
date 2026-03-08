@@ -43,7 +43,7 @@ export default function ChatWidget() {
     setIframeError(false);
     setOpen(true);
     // Sync the logged-in user to the backend so LibreChat reads their ClickHouse data
-    const userId = localStorage.getItem("powerblock_user_id");
+    const userId = localStorage.getItem("blockbattles_user_id");
     if (userId) {
       fetch(`${API_URL}/api/session/user`, {
         method: "POST",
@@ -76,7 +76,7 @@ export default function ChatWidget() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-semibold text-white leading-tight">PowerBlock AI Coach</p>
+                <p className="text-sm font-semibold text-white leading-tight">BlockBattles AI Coach</p>
                 <p className="text-[10px] text-white/75 leading-tight">Powered by your live energy data</p>
               </div>
             </div>
@@ -121,7 +121,7 @@ export default function ChatWidget() {
 
             <iframe
               src={LIBRECHAT_URL}
-              title="PowerBlock AI Coach"
+              title="BlockBattles AI Coach"
               onLoad={() => setIframeLoaded(true)}
               onError={() => setIframeError(true)}
               className="w-full h-full border-0"

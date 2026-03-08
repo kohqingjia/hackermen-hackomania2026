@@ -17,29 +17,29 @@ export default function OnboardingPage() {
         const postalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
 
         if (householdId) {
-          localStorage.setItem("powerblock_household_id", householdId);
+          localStorage.setItem("blockbattles_household_id", householdId);
         }
         if (postalCode) {
-          localStorage.setItem("powerblock_postal_code", postalCode);
+          localStorage.setItem("blockbattles_postal_code", postalCode);
         }
 
         if (userId) {
-          localStorage.setItem("powerblock_user_id", userId);
+          localStorage.setItem("blockbattles_user_id", userId);
           router.replace("/dashboard");
           return;
         }
 
-        localStorage.removeItem("powerblock_user_id");
-        localStorage.removeItem("powerblock_postal_code");
-        localStorage.removeItem("powerblock_household_id");
-        localStorage.removeItem("powerblock_target_bill");
+        localStorage.removeItem("blockbattles_user_id");
+        localStorage.removeItem("blockbattles_postal_code");
+        localStorage.removeItem("blockbattles_household_id");
+        localStorage.removeItem("blockbattles_target_bill");
         setReady(true);
       })
       .catch(() => {
-        localStorage.removeItem("powerblock_user_id");
-        localStorage.removeItem("powerblock_postal_code");
-        localStorage.removeItem("powerblock_household_id");
-        localStorage.removeItem("powerblock_target_bill");
+        localStorage.removeItem("blockbattles_user_id");
+        localStorage.removeItem("blockbattles_postal_code");
+        localStorage.removeItem("blockbattles_household_id");
+        localStorage.removeItem("blockbattles_target_bill");
         setReady(true);
       });
   }, [router]);

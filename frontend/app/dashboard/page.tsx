@@ -2,7 +2,7 @@
 
 /**
  * Dashboard — main home screen
- * Shows: half-hourly usage chart, AI insight, bill tracker, block wars widget
+ * Shows: half-hourly usage chart, AI insight, bill tracker, block battles widget
  * Data: /api/usage, /api/ai/insights, /api/ai/analyze, 
  */
 
@@ -48,26 +48,26 @@ export default function DashboardPage() {
         const userId = String(result.user_id ?? result.UserID ?? "").trim();
         const householdId = String(result.household_id ?? result.HouseholdID ?? "").trim();
         const backendPostalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
-        const storedPostalCode = localStorage.getItem("powerblock_postal_code") || "";
+        const storedPostalCode = localStorage.getItem("blockbattles_postal_code") || "";
         const postalCode = backendPostalCode || storedPostalCode;
 
         if (householdId) {
-          localStorage.setItem("powerblock_household_id", householdId);
+          localStorage.setItem("blockbattles_household_id", householdId);
         }
         if (postalCode) {
-          localStorage.setItem("powerblock_postal_code", postalCode);
+          localStorage.setItem("blockbattles_postal_code", postalCode);
         }
 
         if (!userId) {
-          localStorage.removeItem("powerblock_user_id");
-          localStorage.removeItem("powerblock_postal_code");
-          localStorage.removeItem("powerblock_household_id");
-          localStorage.removeItem("powerblock_target_bill");
+          localStorage.removeItem("blockbattles_user_id");
+          localStorage.removeItem("blockbattles_postal_code");
+          localStorage.removeItem("blockbattles_household_id");
+          localStorage.removeItem("blockbattles_target_bill");
           router.replace("/onboarding");
           return;
         }
 
-        localStorage.setItem("powerblock_user_id", userId);
+        localStorage.setItem("blockbattles_user_id", userId);
         setUserId(userId);
         setPostalCode(postalCode || "752339");
         setBackendChecked(true);
@@ -88,10 +88,10 @@ export default function DashboardPage() {
         getAIInsightContext().then((result) => setInsightContext(result.context)).catch(console.error);
       })
       .catch(() => {
-        localStorage.removeItem("powerblock_user_id");
-        localStorage.removeItem("powerblock_postal_code");
-        localStorage.removeItem("powerblock_household_id");
-        localStorage.removeItem("powerblock_target_bill");
+        localStorage.removeItem("blockbattles_user_id");
+        localStorage.removeItem("blockbattles_postal_code");
+        localStorage.removeItem("blockbattles_household_id");
+        localStorage.removeItem("blockbattles_target_bill");
         router.replace("/onboarding");
       });
   }, [router]);
@@ -123,7 +123,7 @@ export default function DashboardPage() {
       <div className="flex justify-between items-start">
         <div>
           <p className="text-xs text-sp-text-secondary">{appDate}</p>
-          <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
+          <h1 className="text-xl font-bold text-sp-text mt-0.5">Good Afternoon!</h1>
           <p className="text-xs text-sp-text-secondary">Blk {blockLabel(postalCode)}, {roadName}</p>
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">

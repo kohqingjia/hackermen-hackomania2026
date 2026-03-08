@@ -34,7 +34,7 @@ export default function ChallengesPage() {
   useEffect(() => {
     setIsMounted(true);
 
-    const uid = localStorage.getItem("powerblock_user_id");
+    const uid = localStorage.getItem("blockbattles_user_id");
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
 

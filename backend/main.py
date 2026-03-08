@@ -13,7 +13,7 @@ from database.clickhouse import init_schema
 from utils.datetime_helper import get_app_date
 
 app = FastAPI(
-    title="PowerBlock API",
+    title="BlockBattles API",
     description="SP Group Hackomania — AI for Actionable Energy Behaviour Change",
     version="1.0.0",
 )
@@ -49,7 +49,7 @@ def on_startup():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "PowerBlock API"}
+    return {"status": "ok", "service": "BlockBattles API"}
 
 
 @app.get("/api/app-date")

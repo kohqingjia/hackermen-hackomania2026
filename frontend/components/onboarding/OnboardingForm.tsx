@@ -40,10 +40,10 @@ export default function OnboardingForm() {
           String(profile.Postal_Code ?? profile.postal_code ?? "").trim();
 
         if (backendUserId) {
-          localStorage.setItem("powerblock_user_id", backendUserId);
+          localStorage.setItem("blockbattles_user_id", backendUserId);
         }
         if (backendPostalCode) {
-          localStorage.setItem("powerblock_postal_code", backendPostalCode);
+          localStorage.setItem("blockbattles_postal_code", backendPostalCode);
           setForm((prev) => ({ ...prev, postal_code: backendPostalCode }));
         }
       })
@@ -69,10 +69,10 @@ export default function OnboardingForm() {
         household_id: form.household_id || `${form.postal_code}-HH${String(idx).padStart(2, "0")}`,
       };
       const res = await submitOnboarding(dataToSend);
-      localStorage.setItem("powerblock_user_id", res.user_id);
-      localStorage.setItem("powerblock_postal_code", form.postal_code);
+      localStorage.setItem("blockbattles_user_id", res.user_id);
+      localStorage.setItem("blockbattles_postal_code", form.postal_code);
       if (form.target_bill != null) {
-        localStorage.setItem("powerblock_target_bill", String(form.target_bill));
+        localStorage.setItem("blockbattles_target_bill", String(form.target_bill));
       }
       router.push("/dashboard");
     } catch (e) {
@@ -90,7 +90,7 @@ export default function OnboardingForm() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
         </svg>
       </div>
-      <h1 className="text-2xl font-bold text-sp-text">PowerBlock</h1>
+      <h1 className="text-2xl font-bold text-sp-text">BlockBattles</h1>
       <p className="text-sp-text-secondary text-sm max-w-xs">
         Join your HDB block in the community energy challenge. Reduce usage, earn points, save money.
       </p>

@@ -8,7 +8,7 @@ const BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 /** Return stored user_id or empty string. */
 function _uid(): string {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem("powerblock_user_id") || "";
+  return localStorage.getItem("blockbattles_user_id") || "";
 }
 
 /** Build a URLSearchParams with user_id + optional extras. */
@@ -54,7 +54,7 @@ export async function submitOnboarding(
 
 export async function getOnboarding() {
   // Pass stored user_id so backend can validate even without USER_ID env var
-  const storedUid = typeof window !== "undefined" ? localStorage.getItem("powerblock_user_id") || "" : "";
+  const storedUid = typeof window !== "undefined" ? localStorage.getItem("blockbattles_user_id") || "" : "";
   const params = new URLSearchParams({ _t: String(Date.now()) });
   if (storedUid) params.set("user_id", storedUid);
   return request<Record<string, unknown>>(`/api/onboarding?${params}`);

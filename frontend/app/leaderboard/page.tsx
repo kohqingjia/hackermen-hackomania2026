@@ -21,7 +21,7 @@ export default function LeaderboardPage() {
   const [historyIndex, setHistoryIndex] = useState(0);
 
   useEffect(() => {
-    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
+    const bid = localStorage.getItem("blockbattles_postal_code") || "752339";
     setUserPostalCode(bid);
 
     getLeaderboard("Yishun")

@@ -17,8 +17,8 @@ services:
       DOMAIN_CLIENT: "http://localhost:3090"
       DOMAIN_SERVER: "http://localhost:3090"
       # Auth
-      JWT_SECRET: "powerblock-jwt-secret-change-in-prod"
-      JWT_REFRESH_SECRET: "powerblock-refresh-secret-change-in-prod"
+      JWT_SECRET: "blockbattles-jwt-secret-change-in-prod"
+      JWT_REFRESH_SECRET: "blockbattles-refresh-secret-change-in-prod"
       ALLOW_EMAIL_LOGIN: "true"
       ALLOW_REGISTRATION: "true"
       ALLOW_SOCIAL_LOGIN: "false"

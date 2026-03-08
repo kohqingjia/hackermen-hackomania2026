@@ -48,7 +48,7 @@ export default function MapPage() {
     if (hasLoadedRef.current) return;
     hasLoadedRef.current = true;
 
-    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
+    const bid = localStorage.getItem("blockbattles_postal_code") || "752339";
     setUserPostalCode(bid);
 
     async function loadMapData() {

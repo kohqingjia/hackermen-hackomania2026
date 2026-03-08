@@ -1,4 +1,4 @@
-# PowerBlock — Community Energy Challenge
+# BlockBattles — Community Energy Challenge
 
 SP Group Hackomania 2025 — AI for Actionable Energy Behaviour Change
 

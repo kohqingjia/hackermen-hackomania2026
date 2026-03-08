@@ -3,19 +3,19 @@ cache: true
 
 endpoints:
   custom:
-    - name: "PowerBlock AI Coach"
+    - name: "BlockBattles AI Coach"
       # API key is checked by LibreChat but we ignore it in our backend
-      apiKey: "powerblock"
+      apiKey: "blockbattles"
       # Points to our FastAPI — host.docker.internal reaches the Mac host from inside Docker
       baseURL: "http://host.docker.internal:8000/v1"
       models:
-        default: ["powerblock-coach"]
+        default: ["blockbattles-coach"]
         fetch: false
       titleConvo: true
-      titleModel: "powerblock-coach"
+      titleModel: "blockbattles-coach"
       summarize: false
       forcePrompt: false
-      modelDisplayLabel: "PowerBlock AI"
+      modelDisplayLabel: "BlockBattles AI"
       dropParams:
         - "stop"
         - "frequency_penalty"

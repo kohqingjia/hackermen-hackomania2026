@@ -19,7 +19,7 @@ export default function InsightsPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const uid = localStorage.getItem("powerblock_user_id");
+    const uid = localStorage.getItem("blockbattles_user_id");
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
   }, [router]);

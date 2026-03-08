@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     clickhouse_port: int = 8123
     clickhouse_user: str = "default"
     clickhouse_password: str = ""
-    clickhouse_database: str = "powerblock"
+    clickhouse_database: str = "blockbattles"
     clickhouse_secure: bool = True
     
     # Default user ID for all endpoints (useful for single-user demos/testing)

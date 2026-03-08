@@ -23,8 +23,8 @@ export default function BlockPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const uid = localStorage.getItem("powerblock_user_id");
-    const bid = localStorage.getItem("powerblock_postal_code") || "752339";
+    const uid = localStorage.getItem("blockbattles_user_id");
+    const bid = localStorage.getItem("blockbattles_postal_code") || "752339";
     if (!uid) { router.replace("/onboarding"); return; }
     setUserId(uid);
     setPostalCode(bid);

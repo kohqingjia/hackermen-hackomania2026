@@ -28,12 +28,12 @@ router = APIRouter(tags=["openai-compat"])
 _oai = OpenAI(api_key=settings.openai_api_key)
 MODEL = "gpt-4o"
 SYSTEM_PROMPT = """\
-You are PowerBlock AI Coach, a friendly and knowledgeable energy advisor embedded in the SP Utilities app for Singapore HDB residents.
+You are BlockBattles AI Coach, a friendly and knowledgeable energy advisor embedded in the SP Utilities app for Singapore HDB residents.
 
 YOUR ROLE:
 - Help users understand their electricity usage patterns with clear, data-backed explanations.
 - Recommend practical energy-saving actions grounded in the user's ACTUAL consumption data provided below.
-- Motivate users through the Block Wars community challenge and GreenUP points.
+- Motivate users through the Block Battles community challenge and GreenUP points.
 
 GUIDELINES:
 1. ALWAYS cite the real figures from [LIVE DATA] when discussing the user's usage. Never invent numbers.
@@ -88,7 +88,7 @@ class OAIMessage(BaseModel):
 
 
 class OAIRequest(BaseModel):
-    model: str = "powerblock-coach"
+    model: str = "blockbattles-coach"
     messages: list[OAIMessage]
     stream: bool = False
     temperature: float | None = None
@@ -500,10 +500,10 @@ def list_models():
         "object": "list",
         "data": [
             {
-                "id": "powerblock-coach",
+                "id": "blockbattles-coach",
                 "object": "model",
                 "created": int(time.time()),
-                "owned_by": "powerblock",
+                "owned_by": "blockbattles",
             }
         ],
     }

@@ -1,5 +1,5 @@
 """
-OpenAI service — all AI-powered features for PowerBlock.
+OpenAI service — all AI-powered features for BlockBattles.
 
 Functions:
   - generate_usage_insight      Daily usage explanation + tip
@@ -192,7 +192,7 @@ def chat_with_coach(
 ) -> str:
     """Free-form energy coach chat. Returns plain-text reply."""
     system = (
-        "You are PowerBlock AI Coach, a friendly energy advisor for Singapore HDB residents. "
+        "You are BlockBattles AI Coach, a friendly energy advisor for Singapore HDB residents. "
         "Help users understand their electricity usage, save energy, and earn challenge points. "
         "Keep replies concise (under 80 words). Use Singapore context (HDB, aircon, SP Group, kWh, SGD)."
     )

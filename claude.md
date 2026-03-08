@@ -90,9 +90,9 @@ A strong solution should:
 
 # Our Solution
 
-## PowerBlock – Community Energy Challenge
+## BlockBattles – Community Energy Challenge
 
-PowerBlock transforms the SP App from a **passive energy dashboard into an active behaviour change platform**.
+BlockBattles transforms the SP App from a **passive energy dashboard into an active behaviour change platform**.
 
 Instead of simply displaying energy data, the system:
 
@@ -170,7 +170,7 @@ However:
 
 ## Our Improvement
 
-PowerBlock extends GreenUP by introducing:
+BlockBattles extends GreenUP by introducing:
 
 - **daily energy actions**
 - **AI energy coaching**
@@ -473,7 +473,7 @@ Possible future improvements:
 
 ---
 
-# PowerBlock
+# BlockBattles
 
 **Turning energy data into community action.**
 
