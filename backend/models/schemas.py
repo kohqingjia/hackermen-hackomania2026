@@ -176,6 +176,10 @@ class AIInsightResponse(BaseModel):
     comparison: str         # vs yesterday / vs block
     generated_at: str
 
+class AIInsightContextResponse(BaseModel):
+    user_id: str
+    context: str            # main explanation paragraph
+    generated_at: str
 
 class AIRecommendation(BaseModel):
     title: str

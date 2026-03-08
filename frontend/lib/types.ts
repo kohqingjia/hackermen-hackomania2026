@@ -196,6 +196,12 @@ export interface AIMonthlyAnalysisResponse {
   generated_at: string;
 }
 
+export interface AIInsightContextResponse {
+  user_id: string;
+  context: string;
+  generated_at: string;
+}
+
 // ---- Insights ----
 
 export interface AnomalyResponse {

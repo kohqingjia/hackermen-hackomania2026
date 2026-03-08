@@ -59,6 +59,37 @@ Respond in JSON with keys: insight, tip, comparison. Keep each under 30 words. U
     import json
     return json.loads(response.choices[0].message.content)
 
+def generate_usage_context(
+    user_id: str,
+    user_kwh: float,
+    block_avg_kwh: float,
+    difference: float,
+) -> str:
+    """
+    Returns: { context }
+    """
+    prompt = f"""You are an energy coach for Singapore HDB household. 
+    Your goal is to relate differences between a block's average daily electricity consumption rate ({block_avg_kwh} kWh) and the user's average daily electricity consumption rate ({user_kwh} kWh).
+    The difference is {difference:+.2f} kWh.
+    
+    Create an engaging, visual comparison using Singapore HDB context. Use relatable analogies:
+    - Appliance equivalents (e.g., "running 2 air-cons for X hours")
+    - Cost impact (e.g., "costs ~S${abs(difference)*0.33:.2f} more/less per day"), and show what the savings could have been used for (e.g. a cup of hot tea/coffee from the coffee shop)
+    - Emoji or simple visual language to make it memorable
+    
+    Example: "🌡️ Your usage is +0.5 kWh higher — like running 1 extra fan for 8 hours. That's ~15¢ more daily."
+    
+    Keep it under 40 words, punchy, and actionable. Use Singapore context (HDB, aircon, fan, laundry, kWh, SGD).
+    """
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_completion_tokens=300,
+        temperature=0.7,
+    )
+    return response.choices[0].message.content.strip()
+
 
 def generate_recommendations(
     user_kwh_by_slot: list[float],
