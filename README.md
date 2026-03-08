@@ -1,478 +1,523 @@
-# SP Group Hackathon
-# AI for Actionable Energy Behaviour Change
+# BlockBattles — Community Energy Challenge
+
+**SP Group Hackomania 2025 — AI for Actionable Energy Behaviour Change**
+
+BlockBattles transforms the SP Utilities App from a passive energy dashboard into an active behaviour change platform. It explains electricity usage patterns, recommends actionable behaviour changes, and motivates users through community gamification — pitting HDB blocks against each other in a weekly energy-saving competition.
 
 ---
 
-# Challenge Statement
+## Table of Contents
 
-## AI for Actionable Energy Behaviour Change
-
----
-
-# Background
-
-SP Group provides reliable and efficient energy services that power homes and communities.
-
-Today, users can already access detailed electricity data including **half-hourly energy usage** through platforms like the **SP Utilities App**.
-
-However, **raw data does not automatically translate into understanding or behaviour change**.
-
-Many users:
-
-- Do not understand what the data means
-- Do not know which actions will reduce consumption
-- Cannot see how their daily habits impact energy efficiency or carbon footprint
-
-This challenge asks us to convert **granular energy data into meaningful, practical guidance** that leads to **measurable and lasting sustainable behaviours**.
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Setup & Installation](#setup--installation)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Backend Setup](#2-backend-setup)
+  - [3. Frontend Setup](#3-frontend-setup)
+  - [4. AI Coach (LibreChat) Setup](#4-ai-coach-librechat-setup)
+- [Environment Variables](#environment-variables)
+- [Running the App](#running-the-app)
+- [API Reference](#api-reference)
+- [Architecture](#architecture)
+- [SP Colour Palette](#sp-colour-palette)
 
 ---
 
-# The Challenge
+## Overview
 
-The SP App already provides **half-hourly electricity consumption data**.
+### The Problem
 
-While this data can offer insights, it only becomes valuable if users **know how to interpret and act on it**.
-
-Today:
-
-- Users see many numbers but do not know what they mean
+The SP App already provides half-hourly electricity consumption data, but:
+- Users see numbers but don't know what they mean
 - Peak usage times are not clearly explained
-- It is not obvious when or how to shift electricity usage
-- Users cannot clearly connect their daily habits with energy efficiency
+- There's no motivation to return to the app beyond bill payment
 
-In short:
+### Our Solution: Block Wars
 
-> The app shows the data, but users do not know how to use it to change their behaviour.
-
-There is an opportunity to use **AI to transform consumption data into personalised, explainable, and behaviour-driven insights** that support:
-
-- Energy efficiency
-- Peak demand management
-- Long-term sustainable habits
-
----
-
-# What Success Looks Like
-
-A strong solution should:
-
-## 1. Make Energy Data Easy to Understand
-
-- Clearly explain half-hourly usage patterns
-- Highlight peak hours and unusual spikes
-- Help users understand what is driving their electricity use
-
-## 2. Provide Actionable Behaviour Recommendations
-
-- Suggest simple, practical behaviour changes
-- Recommend specific actions (e.g. shift laundry to off-peak hours)
-- Make every recommendation easy to understand and transparent
-- Use gamification to encourage smarter energy use
-
-## 3. Show Measurable Impact
-
-- Show cost savings
-- Show carbon reduction
-- Show reduction in peak electricity demand
-
-## 4. Build Long-Term Habits
-
-- Track progress over time
-- Provide feedback loops
-- Reward consistent sustainable behaviours
-
-## 5. Connect Individual Actions to the Bigger Picture
-
-- Show how personal actions support grid reliability
-- Link daily habits to broader energy efficiency goals
-
----
-
-# Our Solution
-
-## PowerBlock – Community Energy Challenge
-
-PowerBlock transforms the SP App from a **passive energy dashboard into an active behaviour change platform**.
-
-Instead of simply displaying energy data, the system:
-
-- explains electricity usage patterns
-- recommends actionable behaviour changes
-- motivates users through **community gamification**
-
----
-
-# Target Audience
-
-## HDB Communities
-
-Approximately **77.2% of Singapore's population lives in HDB flats**.
-
-This makes HDB residents the **largest segment for behaviour change impact**.
-
-HDB living also naturally supports **community-based engagement**, making it ideal for gamified energy initiatives.
-
----
-
-## Key User Segments
-
-### Busy Families
-
-- Want to reduce electricity bills
-- Have little time to analyse usage charts
-- Prefer quick, practical recommendations
-
-### Eco-Conscious Young Adults
-
-- Want to reduce carbon footprint
-- Need clear and measurable sustainability actions
-
-### Older Homeowners
-
-- Prefer simple explanations
-- Need reminders and alerts rather than complex dashboards
-
----
-
-# Core Idea
-
-## Gamification Through Block Wars
-
-We introduce **Block Wars**, where HDB blocks compete to reduce electricity consumption.
-
-Instead of individuals acting alone, **entire blocks work together to save energy**.
-
-Example:
-
-> “Block 404 is currently beating Block 405 in the Yishun Energy Challenge.”
-
-Residents earn points through:
-
-- shifting usage to off-peak hours
-- following AI recommendations
-- reducing unnecessary electricity usage
+HDB blocks compete to reduce electricity consumption. Residents earn **GreenUP points** through:
+- Shifting usage to off-peak hours
+- Following AI energy recommendations
+- Completing daily energy-saving challenges
 
 This creates a **modern kampung spirit around energy conservation**.
 
 ---
 
-# Improving GreenUP
+## Features
 
-The SP app currently includes **GreenUP points**, where users earn rewards by pledging sustainability actions.
-
-However:
-
-- Most pledges are **one-time or monthly**
-- Users receive **limited feedback**
-- There is little reason to return to the app frequently
-
----
-
-## Our Improvement
-
-PowerBlock extends GreenUP by introducing:
-
-- **daily energy actions**
-- **AI energy coaching**
-- **community competitions**
-
-Users can earn **GreenUP points more frequently** through everyday energy-saving behaviours.
+| View | Description | Frontend | Backend |
+|---|---|---|---|
+| Onboarding | Collects household profile for personalised recommendations | `app/onboarding/` | `routes/onboarding.py` |
+| Dashboard | Half-hourly usage graph with AI insights and bill tracking | `app/dashboard/` | `routes/usage.py` |
+| Block View | Compare own usage vs block average, AI energy tips | `app/block/` | `routes/block.py` |
+| Map View | Visual map of block energy performance across district | `app/map/` | `routes/map_view.py` |
+| Leaderboard | Weekly block rankings by energy reduction percentage | `app/leaderboard/` | `routes/leaderboard.py` |
+| Challenges | Daily gamified energy-saving challenges with photo proof | `app/challenges/` | `routes/challenges.py` |
+| AI Coach | Floating chat widget powered by LibreChat + GPT-4o | Shared (ChatWidget) | `routes/openai_compat.py` |
+| Insights | Bill projection, anomaly detection, usage benchmarks | `app/insights/` | `routes/ai.py` |
 
 ---
 
-# Product Screens
+## Tech Stack
 
-## Onboarding View
-
-The onboarding process collects contextual information to personalise recommendations.
-
-Information collected:
-
-- Age group
-- Household type
-- Number of tenants *(optional)*
-- Energy saving target
-
-Example:
-
-> Reduce electricity bill by 10%
-
-If household size is not provided, the system can **estimate usage patterns from electricity data**.
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS |
+| Charts | Recharts |
+| Maps | Leaflet + React Leaflet |
+| Animations | Motion (Framer Motion) |
+| Backend | FastAPI (Python 3.8+) |
+| ASGI Server | Uvicorn |
+| Database | ClickHouse Cloud |
+| AI | OpenAI GPT-4o |
+| AI Chat UI | LibreChat (Docker) |
+| Proxy | Nginx (for LibreChat iframe embedding) |
+| Location Data | OneMap API (Singapore) |
 
 ---
 
-## Main Dashboard
+## Project Structure
 
-Provides a clear overview of electricity usage.
-
-Features:
-
-- Half-hourly energy usage graph
-- AI insights explaining consumption
-- Bill tracking progress
-- Contribution to Block Wars
-
-Example insight:
-
-> “Your electricity usage spikes between 7pm and 9pm.  
-Reducing air-conditioning by 30 minutes tonight could save approximately $3 this week.”
-
----
-
-## Block View
-
-Allows users to compare their electricity usage with their **block average**.
-
-Features:
-
-- Own usage vs block average
-- Contribution to block energy reduction
-- AI energy tips
-
-### Privacy Protection
-
-Individual household data is **not publicly visible**.
-
-Only **aggregated averages** are displayed.
-
----
-
-## Map View
-
-Displays energy performance across blocks within a region.
-
-Example:
-
-
-Yishun Energy Challenge
-
-Block 402 — 8% reduction
-Block 404 — 12% reduction (Leading)
-Block 405 — 6% reduction
-
-
----
-
-## Leaderboard View
-
-Shows rankings of blocks participating in the challenge.
-
-Ranking factors:
-
-- percentage reduction from baseline
-- participation rate
-- consistency of energy-saving actions
-
-Example:
-
-
-Top Blocks This Week
-
-Block 404 — 12% reduction
-
-Block 402 — 8% reduction
-
-Block 405 — 6% reduction
-
-
-This ensures **fair comparison across households of different sizes**.
+```
+Hackomania/
+├── .env                              # Root env — OPENAI_API_KEY for LibreChat
+├── .gitignore
+├── CLAUDE.md                         # Project context document
+├── docker-compose.librechat.yml      # LibreChat + MongoDB + Nginx setup
+├── librechat.yaml                    # LibreChat custom endpoint config
+├── nginx.librechat.conf              # Nginx proxy config (strips X-Frame-Options)
+│
+├── backend/                          # FastAPI + ClickHouse + OpenAI
+│   ├── .env                          # Backend environment variables
+│   ├── main.py                       # FastAPI app entry point
+│   ├── config.py                     # Pydantic settings (SP_TARIFF = 0.3168 SGD/kWh)
+│   ├── requirements.txt              # Python dependencies
+│   ├── database/
+│   │   └── clickhouse.py             # ClickHouse client + table schema definitions
+│   ├── models/
+│   │   └── schemas.py                # Pydantic request/response models
+│   ├── routes/
+│   │   ├── onboarding.py             # User onboarding endpoints
+│   │   ├── usage.py                  # Half-hourly electricity usage data
+│   │   ├── block.py                  # Block/postal code comparison
+│   │   ├── map_view.py               # Map visualisation data
+│   │   ├── leaderboard.py            # Block leaderboard rankings
+│   │   ├── challenges.py             # Gamification challenges
+│   │   ├── ai.py                     # AI insights (OpenAI)
+│   │   └── openai_compat.py          # OpenAI-compatible endpoint for LibreChat
+│   ├── services/
+│   │   ├── openai_service.py         # OpenAI API wrapper
+│   │   └── onemap_service.py         # OneMap geocoding service
+│   └── utils/
+│       ├── datetime_helper.py        # App date management (for demo replay)
+│       └── user_resolver.py          # User ID resolution
+│
+└── frontend/                         # Next.js 14 + TypeScript + Tailwind
+    ├── .env.local                    # Frontend environment variables
+    ├── next.config.js                # Rewrites /api/* → backend:8000
+    ├── tailwind.config.js            # Custom SP colour palette
+    ├── app/
+    │   ├── layout.tsx                # Root layout (NavBar + ChatWidget)
+    │   ├── page.tsx                  # Home / landing page
+    │   ├── onboarding/page.tsx
+    │   ├── dashboard/page.tsx
+    │   ├── block/page.tsx
+    │   ├── map/page.tsx
+    │   ├── leaderboard/page.tsx
+    │   ├── challenges/page.tsx
+    │   └── insights/page.tsx
+    ├── components/
+    │   ├── shared/                   # NavBar, ChatWidget (LibreChat iframe), Card, StatBox
+    │   ├── onboarding/
+    │   ├── dashboard/                # AIInsightCard, BuildingGraph (Recharts)
+    │   ├── block/                    # BlockStats, BlockComparisonChart, AITipCard
+    │   ├── map/                      # BlockMap, OneMapLeaflet
+    │   ├── leaderboard/
+    │   ├── challenges/               # ChallengeCard, SubmitPhotoModal
+    │   └── insights/                 # EditTargetBillModal, BenchmarkCard, ProjectionsCard, AnomalyCard
+    └── lib/
+        ├── api.ts                    # All API client functions
+        ├── types.ts                  # TypeScript type definitions
+        └── blockNames.ts             # Block naming utilities
+```
 
 ---
 
-# AI Energy Recommender
+## Prerequisites
 
-The AI analyses electricity usage patterns and generates **personalised insights**.
-
-Example:
-
-> “Your electricity usage peaks at 8pm, likely due to air-conditioning.”
-
-Suggested action:
-
-> “Running laundry after 10pm could reduce peak demand and lower costs.”
+- **Node.js** 18+ with npm
+- **Python** 3.8+ with pip
+- **Docker Desktop** (required only for the AI Coach / LibreChat feature)
+- An **OpenAI API key** (GPT-4o)
+- Access to the **ClickHouse Cloud** database (credentials provided separately)
+- A **OneMap API token** for map geocoding — register at [onemap.gov.sg](https://www.onemap.gov.sg/apidocs/register)
 
 ---
 
-# Peak Demand Optimisation
+## Setup & Installation
 
-Peak electricity demand usually occurs between:
+### 1. Clone the Repository
 
-**6PM – 10PM**
+```bash
+git clone <repo-url>
+cd Hackomania
+```
 
-This period places stress on the energy grid.
+### 2. Backend Setup
 
-The AI recommends shifting flexible activities to **off-peak hours**.
+```bash
+cd backend
+```
 
-Example:
+**Create the `.env` file:**
 
-> “If you move laundry from 8PM to 11PM, you could save around 5% on electricity costs.”
+```bash
+# backend/.env
+OPENAI_API_KEY=sk-proj-...your-key-here...
 
----
+# ClickHouse Cloud (Asia Southeast 1 — GCP)
+CLICKHOUSE_HOST=kcpmfvvs96.asia-southeast1.gcp.clickhouse.cloud
+CLICKHOUSE_PORT=443
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=<password>
+CLICKHOUSE_DATABASE=default
+CLICKHOUSE_SECURE=true
 
-# Technical Implementation
+# Default demo user (skips onboarding requirement)
+USER_ID=3d6414de-7c0f-4b0d-817e-9bb25eb18c3b
+HOUSEHOLD_ID=3d6414de-7c0f-4b0d-817e-9bb25eb18c3b
 
-## Data Source
+# OneMap API token
+ONEMAP_API_KEY=<your-onemap-jwt-token>
 
-Real SP data is not available during the hackathon.
+# App date for demo replay (set to desired date for historical data)
+CURRENT_APP_DATE=2025-12-31
+```
 
-Therefore the prototype uses **simulated electricity consumption data**.
+**Install Python dependencies:**
 
-Simulation configuration:
+```bash
+pip install -r requirements.txt
+```
 
-- household electricity data
-- generated daily for one month
-- each day split into **half-hour intervals**
+**Start the backend server:**
 
----
+```bash
+uvicorn main:app --reload --port 8000
+```
 
-## Example Data Fields
-
-- household_id
-- block_id
-- timestamp
-- electricity_kwh
-- district
-- household_profile
-
----
-
-## Demo Implementation
-
-The dashboard will:
-
-- iterate through simulated daily data
-- generate AI insights dynamically
-- demonstrate behaviour-driven recommendations
-
----
-
-# System Architecture
-
-## Data Layer
-
-Simulated electricity dataset.
+Backend runs at **http://localhost:8000**
+Swagger API docs at **http://localhost:8000/docs**
 
 ---
 
-## Analytics Layer
+### 3. Frontend Setup
 
-Detects:
+```bash
+cd frontend
+```
 
-- peak electricity usage
-- abnormal spikes
-- block-level averages
-- consumption trends
+**Create the `.env.local` file:**
+
+```bash
+# frontend/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_LIBRECHAT_URL=http://localhost:3090
+NEXT_PUBLIC_ONEMAP_TOKEN=<your-onemap-jwt-token>
+```
+
+**Install dependencies:**
+
+```bash
+npm install
+```
+
+**Start the dev server:**
+
+```bash
+npm run dev
+```
+
+Frontend runs at **http://localhost:3000**
+
+> **Note:** The frontend proxies all `/api/*` requests to the backend via a Next.js rewrite rule in `next.config.js`. No CORS configuration needed.
 
 ---
 
-## AI Layer
+### 4. AI Coach (LibreChat) Setup
 
-LLMs convert analytics outputs into:
+The floating chat widget is powered by [LibreChat](https://github.com/danny-avila/LibreChat) running in Docker, proxied through Nginx so it can be embedded in an iframe.
 
-- explanations
-- recommendations
-- behavioural nudges
+**Prerequisite:** Docker Desktop must be installed and running.
+
+**Create a root `.env` file** (same directory as `docker-compose.librechat.yml`):
+
+```bash
+# .env  (gitignored — never commit this)
+OPENAI_API_KEY=sk-proj-...your-key-here...
+```
+
+**Start LibreChat:**
+
+```bash
+docker compose -f docker-compose.librechat.yml up -d
+```
+
+This starts three containers:
+
+| Container | Description | Port |
+|---|---|---|
+| `mongodb` | Stores LibreChat conversation history | Internal only |
+| `librechat` | LibreChat chat UI | Internal :3080 |
+| `librechat-proxy` | Nginx — strips `X-Frame-Options` for iframe embedding | **:3090** |
+
+LibreChat is accessible at **http://localhost:3090** and automatically embedded in the app's chat widget.
+
+**How the AI Coach works:**
+
+```
+User message → LibreChat UI → FastAPI /v1/chat/completions
+                                       ↓
+                            Queries live ClickHouse data
+                                       ↓
+                            GPT-4o generates personalised insight
+                                       ↓
+                            Response streamed back to chat widget
+```
+
+The FastAPI backend must be running for the AI Coach to work.
+
+**Stop LibreChat:**
+
+```bash
+docker compose -f docker-compose.librechat.yml down
+```
+
+**Troubleshoot:** If the chat widget shows "AI Coach not running":
+
+```bash
+docker compose -f docker-compose.librechat.yml ps
+```
 
 ---
 
-## Application Layer
+## Environment Variables
 
-User interface components:
+### Backend (`backend/.env`)
 
-- Dashboard
-- Block View
-- Map View
-- Leaderboard
-- Onboarding
+| Variable | Description | Required |
+|---|---|---|
+| `OPENAI_API_KEY` | OpenAI API key for GPT-4o | Yes |
+| `CLICKHOUSE_HOST` | ClickHouse Cloud host | Yes |
+| `CLICKHOUSE_PORT` | ClickHouse port (443 for cloud) | Yes |
+| `CLICKHOUSE_USER` | ClickHouse username | Yes |
+| `CLICKHOUSE_PASSWORD` | ClickHouse password | Yes |
+| `CLICKHOUSE_DATABASE` | ClickHouse database name | Yes |
+| `CLICKHOUSE_SECURE` | Use TLS (`true` for cloud) | Yes |
+| `USER_ID` | Default demo user UUID | Optional |
+| `HOUSEHOLD_ID` | Default demo household UUID | Optional |
+| `ONEMAP_API_KEY` | OneMap JWT token for geocoding | Optional |
+| `CURRENT_APP_DATE` | Override app date for demo replay (YYYY-MM-DD) | Optional |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Description | Required |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend base URL | Yes |
+| `NEXT_PUBLIC_LIBRECHAT_URL` | LibreChat URL (for chat widget iframe) | Optional |
+| `NEXT_PUBLIC_ONEMAP_TOKEN` | OneMap JWT token for map tiles | Optional |
+
+### Root (`.env`) — LibreChat only
+
+| Variable | Description | Required |
+|---|---|---|
+| `OPENAI_API_KEY` | OpenAI API key used by LibreChat | Yes (if using LibreChat) |
 
 ---
 
-# UI Design & Colour Scheme
+## Running the App
 
-The prototype adopts the visual design of the **SP Utilities App** to ensure familiarity.
+### Development (all services)
+
+Open 3 terminals:
+
+**Terminal 1 — Backend:**
+```bash
+cd backend
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 — Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+**Terminal 3 — LibreChat (optional):**
+```bash
+docker compose -f docker-compose.librechat.yml up
+```
+
+### Port Summary
+
+| Service | Port | URL |
+|---|---|---|
+| Frontend (Next.js) | 3000 | http://localhost:3000 |
+| Backend (FastAPI) | 8000 | http://localhost:8000 |
+| API Docs (Swagger) | 8000 | http://localhost:8000/docs |
+| LibreChat Proxy (Nginx) | 3090 | http://localhost:3090 |
+| LibreChat App | 3080 | Internal Docker only |
+| MongoDB | 27017 | Internal Docker only |
+
+### Production Build (Frontend)
+
+```bash
+cd frontend
+npm run build
+npm start
+```
+
+---
+
+## API Reference
+
+### Health Check
+
+```
+GET /health
+→ {"status": "ok", "service": "BlockBattles API"}
+
+GET /api/app-date
+→ {"date": "2025-12-31", "formatted": "31 December 2025"}
+```
+
+### Onboarding
+
+```
+POST /api/onboarding          # Submit household profile
+GET  /api/onboarding/{user_id} # Retrieve user profile
+```
+
+### Usage Data
+
+```
+GET /api/usage/daily          # Today's half-hourly consumption
+GET /api/usage/monthly        # Monthly usage summary
+GET /api/usage/peak-hours     # Peak usage period analysis
+```
+
+### Block Comparison
+
+```
+GET /api/block/comparison     # Own usage vs block average
+GET /api/block/stats          # Block-level statistics
+```
+
+### Leaderboard
+
+```
+GET /api/leaderboard          # Weekly block rankings
+```
+
+### Map View
+
+```
+GET /api/map/blocks           # Block energy data for map rendering
+```
+
+### Challenges
+
+```
+GET  /api/challenges          # List available challenges
+POST /api/challenges/complete # Submit challenge completion with photo
+```
+
+### AI Insights
+
+```
+POST /api/ai/insights         # Generate personalised AI insight
+POST /v1/chat/completions     # OpenAI-compatible endpoint (used by LibreChat)
+```
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│           Next.js Frontend (3000)        │
+│  Dashboard │ Block │ Map │ Leaderboard   │
+│            └── ChatWidget (iframe)        │
+└──────────────┬──────────────────────────┘
+               │ /api/* (rewrites)
+               ▼
+┌─────────────────────────────────────────┐
+│          FastAPI Backend (8000)          │
+│  Routes: usage / block / map / ai / ...  │
+│  Config: SP_TARIFF = 0.3168 SGD/kWh     │
+└──────┬──────────────────┬───────────────┘
+       │                  │
+       ▼                  ▼
+┌─────────────┐   ┌──────────────────┐
+│  ClickHouse │   │  OpenAI GPT-4o   │
+│  Cloud DB   │   │  (AI Insights)   │
+└─────────────┘   └──────────────────┘
+
+┌─────────────────────────────────────────┐
+│       LibreChat Docker Stack (3090)      │
+│  Nginx Proxy → LibreChat → MongoDB       │
+│  ↕ calls FastAPI /v1/chat/completions    │
+└─────────────────────────────────────────┘
+```
+
+### Database Tables (ClickHouse)
+
+**Consumption Data (time-series):**
+
+| Table | Columns | Description |
+|---|---|---|
+| `consumption_per_household` | HouseholdID, Timestamp, Consumption(kWh) | Half-hourly consumption readings |
+| `consumption_per_household_daily` | HouseholdID, Day, Consumption(kWh) | Daily aggregated consumption |
+| `consumption_per_household_monthly` | HouseholdID, MonthStart, Consumption(kWh) | Monthly aggregated consumption |
+| `consumption_per_household_weekly` | HouseholdID, WeekStart, Consumption(kWh) | Weekly aggregated consumption |
+
+**Household Metadata:**
+
+| Table | Columns | Description |
+|---|---|---|
+| `details_per_household` | UserID, HouseholdID, Area, Region, District, PostalCode, Dwelling_type, Flat_type | Static household profile |
+| `input_per_household` | UserID, HouseholdID, Floor_area_sqm, Num_residents, Num_children, Num_elderly, Num_tenants, Aircon_usage, Num_Aircons, Has_WFH_days, Num_WFH | User preferences and household composition |
 
 ---
 
 ## SP Colour Palette
 
+The UI matches the SP Utilities App visual identity.
+
 | Role | Colour | Hex |
-|-----|-----|-----|
-| Primary | Teal | #2DB7A3 |
-| Secondary | Mint Green | #9DE1D3 |
-| Chart Colour | Soft Mint | #BFECE4 |
-| Background | Light Grey | #F5F7F7 |
-| Card | White | #FFFFFF |
-| Alert | Orange | #F59E0B |
-| Primary Text | Dark Grey | #2F3A3A |
-| Secondary Text | Grey | #6B7C7C |
+|---|---|---|
+| Primary | Teal | `#2DB7A3` |
+| Secondary | Mint Green | `#9DE1D3` |
+| Chart | Soft Mint | `#BFECE4` |
+| Background | Light Grey | `#F5F7F7` |
+| Card | White | `#FFFFFF` |
+| Alert | Orange | `#F59E0B` |
+| Primary Text | Dark Grey | `#2F3A3A` |
+| Secondary Text | Grey | `#6B7C7C` |
+
+All colours are available as Tailwind utility classes:
+`sp-teal`, `sp-mint`, `sp-chart`, `sp-bg`, `sp-alert`, `sp-text`, `sp-text-secondary`
 
 ---
 
-# Success Metrics
+## Notes
 
-## User Impact
-
-- reduction in electricity consumption
-- reduction in peak-hour demand
-- electricity bill savings
-
----
-
-## Product Metrics
-
-- daily active users
-- app engagement
-- participation in Block Wars
-- completion of AI recommendations
-
----
-
-## Community Metrics
-
-- block-level electricity reduction
-- participation rate
-- GreenUP points earned
-
----
-
-# Why This Works
-
-Behavioural science shows people are more motivated by:
-
-- social comparison
-- competition
-- visible progress
-- community belonging
-
-Block Wars leverages **community motivation to encourage sustainable behaviour**.
-
----
-
-# Hackathon MVP
-
-The prototype demonstrates:
-
-- onboarding flow
-- simulated electricity dashboard
-- AI energy insights
-- block comparison
-- block leaderboard
-- gamified sustainability actions
-
----
-
-# Future Expansion
-
-Possible future improvements:
-
-- integration with real SP electricity data
-- appliance-level energy insights
-- weather-aware recommendations
-- smart home integration
-- deeper GreenUP rewards ecosystem
-
----
-
-# PowerBlock
-
-**Turning energy data into community action.**
+- **Demo Mode:** `USER_ID` and `HOUSEHOLD_ID` in `backend/.env` bypass onboarding, useful for demos and testing.
+- **App Date Replay:** Set `CURRENT_APP_DATE` in `backend/.env` to replay historical data for any date.
+- **Electricity Tariff:** SP tariff is hardcoded at `0.3168 SGD/kWh` in `backend/config.py`.
+- **Simulated Data:** Real SP data is unavailable during the hackathon. The prototype uses simulated half-hourly household electricity data for one month.
+- **Privacy:** Individual household data is never publicly visible. Only aggregated block averages are displayed in Block View and Map View.
+- **OneMap API:** Required for the map view. Register and obtain a JWT token at [onemap.gov.sg](https://www.onemap.gov.sg/apidocs/register).

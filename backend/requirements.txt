@@ -1,0 +1,9 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.4
+pydantic-settings==2.7.0
+clickhouse-connect==0.8.14
+openai==1.59.9
+python-dotenv==1.0.1
+python-multipart==0.0.20
+httpx==0.28.1
