@@ -118,16 +118,19 @@ def get_onboarding():
 
     if effective_user_id:
         client = get_client()
-        user_exists = client.query(
-            "SELECT 1 FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
+        user_profile = client.query(
+            "SELECT PostalCode FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
             parameters={"uid": effective_user_id},
         ).result_rows
-        if user_exists:
-            resp = OnboardingResponse(
-                user_id=effective_user_id,
-                message="User found.",
+        if user_profile:
+            return JSONResponse(
+                content={
+                    "user_id": effective_user_id,
+                    "postal_code": str(user_profile[0][0] or "").strip(),
+                    "message": "User found.",
+                },
+                headers=NO_CACHE_HEADERS,
             )
-            return JSONResponse(content=resp.model_dump(), headers=NO_CACHE_HEADERS)
 
     # No valid user found — require onboarding
     return JSONResponse(

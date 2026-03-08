@@ -45,7 +45,9 @@ export default function DashboardPage() {
         console.log(result);
         const userId = String(result.user_id ?? result.UserID ?? "").trim();
         const householdId = String(result.household_id ?? result.HouseholdID ?? "").trim();
-        const postalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
+        const backendPostalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
+        const storedPostalCode = localStorage.getItem("powerblock_postal_code") || "";
+        const postalCode = backendPostalCode || storedPostalCode;
 
         if (householdId) {
           localStorage.setItem("powerblock_household_id", householdId);
