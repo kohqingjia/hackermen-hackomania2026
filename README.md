@@ -203,12 +203,6 @@ CURRENT_APP_DATE=2025-12-31
 pip install -r requirements.txt
 ```
 
-**Seed the database (first-time setup):**
-
-```bash
-python -m database.seed
-```
-
 **Start the backend server:**
 
 ```bash
