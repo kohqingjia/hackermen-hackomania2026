@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { BlockMapEntry } from "@/lib/types";
+import { blockLabel } from "@/lib/blockNames";
 
 const BLOCK_COORDS: Record<string, [number, number]> = {
   "752339": [1.4295, 103.8337],
@@ -100,7 +101,7 @@ export default function OneMapLeaflet({ blocks, userPostalCode, selectedPostalCo
         marker.bindPopup(
           `
           <div style="min-width:120px;font-family:sans-serif;line-height:1.6">
-            <p style="font-weight:700;margin:0 0 2px">${block.postal_code}${isUser ? " 📍 You" : ""}</p>
+            <p style="font-weight:700;margin:0 0 2px">Blk ${blockLabel(block.postal_code)}${isUser ? " 📍 You" : ""}</p>
             <p style="color:${block.reduction_pct >= 0 ? "#16a34a" : "#ef4444"};font-weight:600;margin:0 0 1px">${deltaSign}${deltaValue}% vs avg</p>
             <p style="color:#6b7280;font-size:11px;margin:0">${block.avg_kwh.toFixed(2)} kWh/day · Rank #${block.rank}</p>
           </div>

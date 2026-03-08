@@ -18,6 +18,7 @@ import { EnergyBuilding } from "@/components/dashboard/BuildingGraph";
 import clsx from "clsx";
 import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getOnboarding } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
+import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 import StatBox from "@/components/shared/StatBox";
 
 export default function DashboardPage() {
@@ -74,6 +75,11 @@ export default function DashboardPage() {
           .finally(() => setLoadingUsage(false));
 
         getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
+
+        // Pre-fetch leaderboard to populate block name cache (postal_code → block_no)
+        getLeaderboard("Yishun")
+          .then((res) => { if (res.block_no_map) mergeBlockNames(res.block_no_map); })
+          .catch(console.error);
       })
       .catch(() => {
         localStorage.removeItem("powerblock_user_id");
@@ -103,7 +109,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-sp-text-secondary">{today}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
-          <p className="text-xs text-sp-text-secondary">{postalCode}, Sembawang</p> {/**To do: change location to db data instead of hardcoded yishun */}
+          <p className="text-xs text-sp-text-secondary">Blk {blockLabel(postalCode)}, Sembawang</p> {/**To do: change location to db data instead of hardcoded yishun */}
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">
           <svg className="w-5 h-5 stroke-sp-teal" fill="none" viewBox="0 0 24 24" strokeWidth={2}>
@@ -135,7 +141,7 @@ export default function DashboardPage() {
             userUsage={blockUsage.user_kwh}
             blockAverage={blockUsage.block_avg_kwh}
             threshold={Math.max(blockUsage.user_kwh, blockUsage.block_avg_kwh) * 1.3 || 1}
-            blockName={`BLK ${postalCode}`}
+            blockName={`BLK ${blockLabel(postalCode)}`}
             timeLabel="Today's total usage"
           />
         </Card>

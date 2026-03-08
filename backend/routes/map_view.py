@@ -10,7 +10,7 @@ from fastapi import APIRouter, Query
 from database.clickhouse import get_client
 from models.schemas import MapResponse, BlockMapEntry
 from utils.datetime_helper import get_app_date
-from services.onemap_service import geocode_postal
+from services.onemap_service import geocode_postal, get_block_no
 
 router = APIRouter(prefix="/api/map", tags=["map"])
 
@@ -77,6 +77,7 @@ def get_map(
     district_avg_kwh = round(district_avg_row[0][0], 3) if district_avg_row and district_avg_row[0][0] else 0.0
 
     entries = []
+    block_no_map: dict[str, str] = {}
     for rank, (postal_code, avg_kwh) in enumerate(current_rows, start=1):
         reduction_pct = round(((district_avg_kwh - avg_kwh) / district_avg_kwh * 100) if district_avg_kwh else 0, 1)
         lat, lng = POSTAL_COORDS.get(postal_code, (1.427, 103.836))
@@ -85,8 +86,14 @@ def get_map(
         if onemap:
             lat, lng = onemap
 
+        # Resolve block number (e.g. "339B")
+        blk = get_block_no(postal_code)
+        if blk:
+            block_no_map[postal_code] = blk
+
         entries.append(BlockMapEntry(
             postal_code=postal_code,
+            block_no=blk,
             district=district,
             avg_kwh=round(avg_kwh, 3),
             reduction_pct=reduction_pct,
@@ -95,4 +102,4 @@ def get_map(
             lng=lng,
         ))
 
-    return MapResponse(district=district, blocks=entries)
+    return MapResponse(district=district, blocks=entries, block_no_map=block_no_map)

@@ -11,6 +11,7 @@ import Card, { LoadingCard } from "@/components/shared/Card";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
 import { getLeaderboard } from "@/lib/api";
 import type { LeaderboardResponse } from "@/lib/types";
+import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 
 export default function LeaderboardPage() {
   const [userPostalCode, setUserPostalCode] = useState("752339");
@@ -24,7 +25,11 @@ export default function LeaderboardPage() {
     setUserPostalCode(bid);
 
     getLeaderboard("Yishun")
-      .then(setData)
+      .then((res) => {
+        // Cache block number mapping from API response
+        if (res.block_no_map) mergeBlockNames(res.block_no_map);
+        setData(res);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -40,14 +45,14 @@ export default function LeaderboardPage() {
   const displayRows = [
     ...(selectedHistory?.winners ?? []).map((winner) => ({
       key: `${selectedHistory?.week_start}-${winner.rank}`,
-      blockId: winner.postal_code,
+      blockId: blockLabel(winner.postal_code),
       avgKwh: winner.avg_kwh,
       rank: winner.rank,
       isUser: winner.postal_code === userPostalCode,
     })),
     ...(!userInTop3 && userBlockKwh !== undefined ? [{
       key: `${selectedHistory?.week_start}-${userPostalCode}`,
-      blockId: userPostalCode,
+      blockId: blockLabel(userPostalCode),
       avgKwh: userBlockKwh,
       rank: null,
       isUser: true,
@@ -177,7 +182,7 @@ export default function LeaderboardPage() {
                         </svg>
                       )}
                     </span>
-                    <span>{row.blockId}</span>
+                    <span>Blk {row.blockId}</span>
                     {row.isUser && (
                       <span className="text-xs font-medium text-white/90">(You)</span>
                     )}

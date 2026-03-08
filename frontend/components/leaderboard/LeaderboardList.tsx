@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import type { LeaderboardEntry } from "@/lib/types";
+import { blockLabel } from "@/lib/blockNames";
 
 interface LeaderboardListProps {
   entries: LeaderboardEntry[];
@@ -46,7 +47,7 @@ export default function LeaderboardList({ entries, userPostalCode }: Leaderboard
             {/* Block info */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sp-text truncate">
-                {entry.postal_code}
+                Blk {blockLabel(entry.postal_code)}
                 {isUser && <span className="ml-1 text-[10px] font-normal text-sp-teal">(You)</span>}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
