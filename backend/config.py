@@ -29,4 +29,8 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
+# ── Shared constants ────────────────────────────────────────────────────────
+# SP Group electricity tariff (SGD per kWh) — single source of truth
+SP_TARIFF = 0.3168
+
 settings = Settings()

@@ -8,7 +8,7 @@ Functions:
 """
 
 from openai import OpenAI
-from config import settings
+from config import settings, SP_TARIFF
 import json
 
 client = OpenAI(api_key=settings.openai_api_key)
@@ -74,7 +74,7 @@ def generate_usage_context(
     
     Create an engaging, visual comparison using Singapore HDB context. Use relatable analogies:
     - Appliance equivalents (e.g., "running 2 air-cons for X hours")
-    - Cost impact (e.g., "costs ~S${abs(difference)*0.33:.2f} more/less per day"), and show what the savings could have been used for (e.g. a cup of hot tea/coffee from the coffee shop)
+    - Cost impact (e.g., "costs ~S${abs(difference)*SP_TARIFF:.2f} more/less per day"), and show what the savings could have been used for (e.g. a cup of hot tea/coffee from the coffee shop)
     - Emoji or simple visual language to make it memorable
     
     Example: "🌡️ Your usage is +0.5 kWh higher — like running 1 extra fan for 8 hours. That's ~15¢ more daily."
@@ -119,7 +119,7 @@ Each must include:
 - title: short label (max 5 words)
 - action: specific action to take (max 20 words)
 - estimated_saving_kwh: realistic float (how much kWh saved per day)
-- estimated_saving_sgd: float (use SGD 0.33/kWh rate)
+- estimated_saving_sgd: float (use SGD {SP_TARIFF}/kWh rate)
 - time_of_day: "morning" | "afternoon" | "evening" | "night"
 - priority: "high" | "medium" | "low"
 
@@ -155,8 +155,8 @@ def generate_monthly_analysis(
 ) -> str:
     """Returns a short narrative paragraph for the monthly analysis view."""
     # Current month (but not the full month), previous month, target bill
-    current_bill = current_month_kwh * 0.33
-    previous_bill = previous_month_kwh * 0.33
+    current_bill = current_month_kwh * SP_TARIFF
+    previous_bill = previous_month_kwh * SP_TARIFF
     change_pct = round(((current_month_kwh - previous_month_kwh) / previous_month_kwh * 100) if previous_month_kwh else 0, 1)
     savings_sgd = round(previous_bill - current_bill, 2)
     on_track = (projected_bill <= target_bill) if target_bill else None
