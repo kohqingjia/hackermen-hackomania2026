@@ -52,7 +52,7 @@ class ChatResponse(BaseModel):
 
 # Get details of a specific user
 def _get_user(client, user_id: str) -> dict:
-    """Return combined profile from household_data + household_user_input."""
+    """Return combined profile from details_per_household + input_per_household."""
     
     row = client.query(
         """

@@ -6,8 +6,8 @@ from datetime import datetime
 # --- Onboarding ---
 
 class OnboardingRequest(BaseModel):
-    """User-submitted household info (maps to household_data + household_user_input)."""
-    # household_data fields
+    """User-submitted household info (maps to details_per_household + input_per_household)."""
+    # details_per_household fields
     household_id: str                           # e.g. "752339-HH03"
     area: str = "North"
     region: str = "North-East"
@@ -15,7 +15,7 @@ class OnboardingRequest(BaseModel):
     postal_code: str = "752339"
     dwelling_type: str = "HDB"
     flat_type: str = "4-room"                   # "3-room" | "4-room" | "5-room"
-    # household_user_input fields
+    # input_per_household fields
     floor_area_sqm: Optional[float] = None
     num_residents: int = 1
     num_children: int = 0
