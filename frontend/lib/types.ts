@@ -1,13 +1,23 @@
 // ---- Onboarding ----
 
 export interface OnboardingForm {
-  age_group: string;
-  household_type: string;
-  num_tenants?: number;
-  work_from_home: boolean;
-  energy_saving_target: number;
-  block_id: string;
+  household_id: string;
+  area?: string;
+  region?: string;
   district: string;
+  postal_code: string;
+  dwelling_type?: string;
+  flat_type: string;           // "3-room" | "4-room" | "5-room"
+  floor_area_sqm?: number;
+  num_residents: number;
+  num_children?: number;
+  num_elderly?: number;
+  num_tenants?: number;
+  aircon_usage: number;        // 0-3
+  num_aircons?: number;
+  has_wfh_days?: string[];     // e.g. ["Monday","Wednesday"]
+  num_wfh: number;             // 0-7
+  target_bill?: number;        // monthly target bill in SGD
 }
 
 export interface OnboardingResponse {
@@ -35,7 +45,7 @@ export interface UsageResponse {
 // ---- Block ----
 
 export interface BlockUsageResponse {
-  block_id: string;
+  postal_code: string;
   date: string;
   block_avg_kwh: number;
   user_kwh: number;
@@ -43,12 +53,27 @@ export interface BlockUsageResponse {
   difference_pct: number;
   hourly_block_avg: HalfHourlyPoint[];
   hourly_user: HalfHourlyPoint[];
+  daily_comparison_week: DailyComparisonPoint[];
+  weekly_comparison_month: WeeklyComparisonPoint[];
+}
+
+export interface DailyComparisonPoint {
+  day_label: string;
+  user_avg_kwh: number;
+  block_avg_kwh: number;
+}
+
+export interface WeeklyComparisonPoint {
+  week_label: string;
+  user_avg_kwh: number;
+  block_avg_kwh: number;
 }
 
 // ---- Map ----
 
 export interface BlockMapEntry {
-  block_id: string;
+  postal_code: string;
+  block_no?: string;
   district: string;
   avg_kwh: number;
   reduction_pct: number;
@@ -60,24 +85,42 @@ export interface BlockMapEntry {
 export interface MapResponse {
   district: string;
   blocks: BlockMapEntry[];
+  block_no_map?: Record<string, string>;
 }
 
 // ---- Leaderboard ----
 
 export interface LeaderboardEntry {
   rank: number;
-  block_id: string;
+  postal_code: string;
+  block_no?: string;
   avg_kwh: number;
   reduction_pct: number;
   points: number;
   weekly_change: number;
 }
 
+export interface WeeklyTopBlock {
+  rank: number;
+  postal_code: string;
+  block_no?: string;
+  avg_kwh: number;
+}
+
+export interface WeeklyTopThree {
+  week_start: string;
+  winners: WeeklyTopBlock[];
+  block_avg_kwh_by_block: Record<string, number>;
+}
+
 export interface LeaderboardResponse {
   week_start: string;
   district: string;
+  district_avg_kwh: number;
   entries: LeaderboardEntry[];
+  weekly_top3_history: WeeklyTopThree[];
   resets_in_days: number;
+  block_no_map?: Record<string, string>;
 }
 
 // ---- Challenges ----
@@ -98,6 +141,14 @@ export interface ChallengesResponse {
   total_points: number;
   weekly_points: number;
   challenges: Challenge[];
+  completed_history: ChallengeHistoryEntry[];
+}
+
+export interface ChallengeHistoryEntry {
+  challenge_id: string;
+  title: string;
+  points_earned: number;
+  completed_at: string;
 }
 
 export interface CompleteChallengeRequest {
@@ -147,5 +198,40 @@ export interface AIMonthlyAnalysisResponse {
   projected_bill_sgd: number;
   budget_sgd: number;
   narrative: string;
+  generated_at: string;
+}
+
+export interface AIInsightContextResponse {
+  user_id: string;
+  context: string;
+  generated_at: string;
+}
+
+// ---- Insights ----
+
+export interface AnomalyResponse {
+  user_id: string;
+  has_anomaly: boolean;
+  analysis: string;
+  generated_at: string;
+}
+
+export interface ProjectionsResponse {
+  user_id: string;
+  projected_bill_sgd: number;
+  projected_avg_daily_kwh: number;
+  projected_total_kwh: number;
+  days_remaining: number;
+  target_bill_sgd?: number;
+  generated_at: string;
+}
+
+export interface HouseholdBenchmarkResponse {
+  user_id: string;
+  flat_type: string;
+  district: string;
+  user_avg_daily_kwh: number;
+  profile_avg_daily_kwh: number;
+  difference_pct: number;
   generated_at: string;
 }

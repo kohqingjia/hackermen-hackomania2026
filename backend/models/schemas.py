@@ -6,13 +6,26 @@ from datetime import datetime
 # --- Onboarding ---
 
 class OnboardingRequest(BaseModel):
-    age_group: str          # "18-30", "31-45", "46-60", "60+"
-    household_type: str     # "1-room", "2-room", "3-room", "4-room", "5-room", "executive"
-    num_tenants: Optional[int] = None
-    work_from_home: bool = False
-    energy_saving_target: float = 10.0   # % reduction target
-    block_id: str = "BLK404"
-    district: str = "Yishun"
+    """User-submitted household info (maps to household_data + household_user_input)."""
+    # household_data fields
+    household_id: str                           # e.g. "752339-HH03"
+    area: str = "North"
+    region: str = "North-East"
+    district: str = "Sembawang"
+    postal_code: str = "752339"
+    dwelling_type: str = "HDB"
+    flat_type: str = "4-room"                   # "3-room" | "4-room" | "5-room"
+    # household_user_input fields
+    floor_area_sqm: Optional[float] = None
+    num_residents: int = 1
+    num_children: int = 0
+    num_elderly: int = 0
+    num_tenants: int = 0
+    aircon_usage: int = 1                       # 0-Never, 1-Sometimes, 2-Every_night, 3-Whole_day
+    num_aircons: int = 1
+    has_wfh_days: list[str] = []                # e.g. ["Monday","Wednesday"]
+    num_wfh: int = 0                            # 0-7
+    target_bill: Optional[float] = None         # monthly target bill in SGD
 
 
 class OnboardingResponse(BaseModel):
@@ -37,10 +50,22 @@ class UsageResponse(BaseModel):
     peak_hour: str
 
 
-# --- Block ---
+# --- Block (Postal Code grouping) ---
+
+class DailyComparisonPoint(BaseModel):
+    day_label: str
+    user_avg_kwh: float
+    block_avg_kwh: float
+
+
+class WeeklyComparisonPoint(BaseModel):
+    week_label: str
+    user_avg_kwh: float
+    block_avg_kwh: float
+
 
 class BlockUsageResponse(BaseModel):
-    block_id: str
+    postal_code: str        # replaces block_id — this is the "block"
     date: str
     block_avg_kwh: float
     user_kwh: float
@@ -48,15 +73,18 @@ class BlockUsageResponse(BaseModel):
     difference_pct: float   # negative = user is below block avg (good)
     hourly_block_avg: list[HalfHourlyPoint]
     hourly_user: list[HalfHourlyPoint]
+    daily_comparison_week: list[DailyComparisonPoint] = []
+    weekly_comparison_month: list[WeeklyComparisonPoint] = []
 
 
 # --- Map ---
 
 class BlockMapEntry(BaseModel):
-    block_id: str
+    postal_code: str        # replaces block_id
+    block_no: Optional[str] = None  # HDB block number from OneMap (e.g. "339B")
     district: str
     avg_kwh: float
-    reduction_pct: float    # vs baseline
+    reduction_pct: float    # vs district average
     rank: int
     lat: float
     lng: float
@@ -65,24 +93,42 @@ class BlockMapEntry(BaseModel):
 class MapResponse(BaseModel):
     district: str
     blocks: list[BlockMapEntry]
+    block_no_map: dict[str, str] = {}  # postal_code -> block_no
 
 
 # --- Leaderboard ---
 
 class LeaderboardEntry(BaseModel):
     rank: int
-    block_id: str
+    postal_code: str        # replaces block_id
+    block_no: Optional[str] = None  # HDB block number from OneMap
     avg_kwh: float
     reduction_pct: float
     points: int
     weekly_change: float    # kwh change vs previous week
 
 
+class WeeklyTopBlock(BaseModel):
+    rank: int
+    postal_code: str
+    block_no: Optional[str] = None
+    avg_kwh: float
+
+
+class WeeklyTopThree(BaseModel):
+    week_start: str
+    winners: list[WeeklyTopBlock]
+    block_avg_kwh_by_block: dict[str, float]
+
+
 class LeaderboardResponse(BaseModel):
     week_start: str
     district: str
+    district_avg_kwh: float  # average across the district for the week
     entries: list[LeaderboardEntry]
+    weekly_top3_history: list[WeeklyTopThree]
     resets_in_days: int
+    block_no_map: dict[str, str] = {}  # postal_code -> block_no
 
 
 # --- Challenges ---
@@ -98,15 +144,23 @@ class Challenge(BaseModel):
     requires_photo: bool = False
 
 
+class ChallengeHistoryEntry(BaseModel):
+    challenge_id: str
+    title: str
+    points_earned: int
+    completed_at: str
+
+
 class ChallengesResponse(BaseModel):
     user_id: str
     total_points: int
     weekly_points: int
     challenges: list[Challenge]
+    completed_history: list[ChallengeHistoryEntry]
 
 
 class CompleteChallengeRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None
     challenge_id: str
     photo_base64: Optional[str] = None
 
@@ -127,6 +181,10 @@ class AIInsightResponse(BaseModel):
     comparison: str         # vs yesterday / vs block
     generated_at: str
 
+class AIInsightContextResponse(BaseModel):
+    user_id: str
+    context: str            # main explanation paragraph
+    generated_at: str
 
 class AIRecommendation(BaseModel):
     title: str
@@ -148,8 +206,38 @@ class AIMonthlyAnalysisResponse(BaseModel):
     current_month_kwh: float
     previous_month_kwh: float
     change_pct: float
-    on_track_for_target: bool
+    savings_sgd: float
     projected_bill_sgd: float
-    budget_sgd: float
+    target_bill_sgd: Optional[float] = None
+    on_track_for_target: Optional[bool] = None
     narrative: str
+    generated_at: str
+
+
+# --- Insights / Anomaly / Projections / Benchmark ---
+
+class AnomalyResponse(BaseModel):
+    user_id: str
+    has_anomaly: bool
+    analysis: str
+    generated_at: str
+
+
+class ProjectionsResponse(BaseModel):
+    user_id: str
+    projected_bill_sgd: float
+    projected_avg_daily_kwh: float
+    projected_total_kwh: float
+    days_remaining: int
+    target_bill_sgd: Optional[float] = None
+    generated_at: str
+
+
+class HouseholdBenchmarkResponse(BaseModel):
+    user_id: str
+    flat_type: str          # replaces household_type
+    district: str
+    user_avg_daily_kwh: float
+    profile_avg_daily_kwh: float
+    difference_pct: float
     generated_at: str

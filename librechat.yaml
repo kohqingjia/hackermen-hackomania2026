@@ -1,0 +1,23 @@
+version: 1.2.1
+cache: true
+
+endpoints:
+  custom:
+    - name: "BlockBattles AI Coach"
+      # API key is checked by LibreChat but we ignore it in our backend
+      apiKey: "blockbattles"
+      # Points to our FastAPI — host.docker.internal reaches the Mac host from inside Docker
+      baseURL: "http://host.docker.internal:8000/v1"
+      models:
+        default: ["blockbattles-coach"]
+        fetch: false
+      titleConvo: true
+      titleModel: "blockbattles-coach"
+      summarize: false
+      forcePrompt: false
+      modelDisplayLabel: "BlockBattles AI"
+      dropParams:
+        - "stop"
+        - "frequency_penalty"
+        - "presence_penalty"
+        - "top_p"

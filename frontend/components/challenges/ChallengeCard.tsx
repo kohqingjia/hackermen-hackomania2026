@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import type { Challenge } from "@/lib/types";
+import LeafIcon from "@/components/shared/LeafIcon";
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -44,12 +45,13 @@ export default function ChallengeCard({ challenge, onComplete }: ChallengeCardPr
           </div>
           {/* Points badge */}
           <span className={clsx(
-            "flex-shrink-0 text-sm font-bold px-2 py-0.5 rounded-full",
+            "flex-shrink-0 text-sm font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1",
             challenge.is_completed
               ? "bg-green-50 text-green-600"
               : "bg-sp-chart text-sp-teal-dark"
           )}>
-            +{challenge.points}
+            <span>+{challenge.points}</span>
+            <LeafIcon className="w-4 h-4 text-green-600" />
           </span>
         </div>
 

@@ -1,30 +1,31 @@
 import clsx from "clsx";
 import type { LeaderboardEntry } from "@/lib/types";
+import { blockLabel } from "@/lib/blockNames";
 
 interface LeaderboardListProps {
   entries: LeaderboardEntry[];
-  userBlockId?: string;
+  userPostalCode?: string;
 }
 
 const RANK_POINTS_LABEL: Record<number, { label: string; bg: string; text: string }> = {
-  1: { label: "+100 pts", bg: "bg-yellow-50", text: "text-yellow-700" },
-  2: { label: "+80 pts",  bg: "bg-gray-50",   text: "text-gray-600" },
-  3: { label: "+25 pts",  bg: "bg-orange-50", text: "text-orange-600" },
+  1: { label: "+100 🍃", bg: "bg-yellow-50", text: "text-yellow-700" },
+  2: { label: "+80 🍃",  bg: "bg-gray-50",   text: "text-gray-600" },
+  3: { label: "+25 🍃",  bg: "bg-orange-50", text: "text-orange-600" },
 };
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-export default function LeaderboardList({ entries, userBlockId }: LeaderboardListProps) {
+export default function LeaderboardList({ entries, userPostalCode }: LeaderboardListProps) {
   return (
     <div className="space-y-2">
       {entries.map((entry) => {
-        const isUser = entry.block_id === userBlockId;
+        const isUser = entry.postal_code === userPostalCode;
         const medal = entry.rank <= 3 ? MEDALS[entry.rank - 1] : null;
         const rankInfo = RANK_POINTS_LABEL[entry.rank];
 
         return (
           <div
-            key={entry.block_id}
+            key={entry.postal_code}
             className={clsx(
               "flex items-center gap-3 px-4 py-3 rounded-2xl border",
               isUser
@@ -46,7 +47,7 @@ export default function LeaderboardList({ entries, userBlockId }: LeaderboardLis
             {/* Block info */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sp-text truncate">
-                {entry.block_id}
+                Blk {blockLabel(entry.postal_code)}
                 {isUser && <span className="ml-1 text-[10px] font-normal text-sp-teal">(You)</span>}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
@@ -54,7 +55,7 @@ export default function LeaderboardList({ entries, userBlockId }: LeaderboardLis
                   "text-xs font-semibold",
                   entry.reduction_pct >= 0 ? "text-green-600" : "text-red-500"
                 )}>
-                  {entry.reduction_pct >= 0 ? "-" : "+"}{Math.abs(entry.reduction_pct)}% vs baseline
+                  {entry.reduction_pct >= 0 ? "-" : "+"}{Math.abs(entry.reduction_pct)}% vs district average
                 </span>
                 <span className={clsx(
                   "text-[10px]",

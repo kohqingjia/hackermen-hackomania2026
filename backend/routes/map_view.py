@@ -1,24 +1,32 @@
 """
 Map view route
 GET /api/map/{district}?date=YYYY-MM-DD
-  Returns all blocks in a district with avg usage and % reduction vs baseline.
-  Used to colour-code blocks on the map.
+  Returns all postal codes (blocks) in a district with avg usage and % reduction
+  vs the previous week. Used to colour-code blocks on the map.
 """
 
 from datetime import date, timedelta
 from fastapi import APIRouter, Query
 from database.clickhouse import get_client
 from models.schemas import MapResponse, BlockMapEntry
+from utils.datetime_helper import get_app_date
+from services.onemap_service import geocode_postal, get_block_no
 
 router = APIRouter(prefix="/api/map", tags=["map"])
 
-# Approximate lat/lng for demo HDB blocks in Yishun
-BLOCK_COORDS = {
-    "BLK402": (1.4268, 103.8354),
-    "BLK403": (1.4275, 103.8362),
-    "BLK404": (1.4282, 103.8347),
-    "BLK405": (1.4258, 103.8369),
-    "BLK406": (1.4290, 103.8380),
+# Hardcoded fallback coords (used when OneMap is unavailable)
+POSTAL_COORDS = {
+    "752339": (1.4268, 103.8354),
+    "752341": (1.4275, 103.8362),
+    "750341": (1.4282, 103.8347),
+    "751339": (1.4258, 103.8369),
+    "750331": (1.4290, 103.8380),
+}
+
+# Friendly display name → DB district code
+DISTRICT_ALIAS = {
+    "yishun": "D27",
+    "sembawang": "D27",
 }
 
 
@@ -28,44 +36,64 @@ def get_map(
     query_date: str = Query(default=None, alias="date"),
 ):
     client = get_client()
-    target_date = date.fromisoformat(query_date) if query_date else date.today()
-    baseline_date = target_date - timedelta(days=7)
+    target_date = date.fromisoformat(query_date) if query_date else get_app_date()
 
-    # Current day avg per block
+    # Resolve friendly name → DB district code (e.g. "Yishun" → "D27")
+    db_district = DISTRICT_ALIAS.get(district.lower(), district)
+
+    # Week window (Mon–Sun) containing the target date
+    week_start = target_date - timedelta(days=target_date.weekday())
+    week_end = week_start + timedelta(days=6)
+
+    # Weekly avg per postal code
     current_rows = client.query(
         """
-        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg_kwh
-        FROM energy_usage
-        WHERE district = {dist:String}
-          AND toDate(timestamp) = {d:Date}
-        GROUP BY block_id
-        ORDER BY daily_avg_kwh ASC
+        SELECT hd.PostalCode, avg(`Consumption(kWh)`) AS weekly_avg_kwh
+        FROM consumption_per_household_daily e
+        JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+        WHERE hd.District = {dist:String}
+          AND e.Day BETWEEN {ws:Date} AND {we:Date}
+        GROUP BY hd.PostalCode
+        ORDER BY weekly_avg_kwh ASC
         """,
-        parameters={"dist": district, "d": target_date.isoformat()},
+        parameters={"dist": db_district, "ws": week_start.isoformat(), "we": week_end.isoformat()},
     ).result_rows
 
-    # Baseline avg (7 days ago)
-    baseline_rows = client.query(
+    # District average = average of each block's weekly average consumption
+    district_avg_row = client.query(
         """
-        SELECT block_id, avg(electricity_kwh) * 48 AS daily_avg_kwh
-        FROM energy_usage
-        WHERE district = {dist:String}
-          AND toDate(timestamp) = {bd:Date}
-        GROUP BY block_id
+        SELECT avg(block_avg) AS district_avg
+        FROM (
+            SELECT hd.PostalCode, avg(`Consumption(kWh)`) AS block_avg
+            FROM consumption_per_household_daily e
+            JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+            WHERE hd.District = {dist:String}
+              AND e.Day BETWEEN {ws:Date} AND {we:Date}
+            GROUP BY hd.PostalCode
+        )
         """,
-        parameters={"dist": district, "bd": baseline_date.isoformat()},
+        parameters={"dist": db_district, "ws": week_start.isoformat(), "we": week_end.isoformat()},
     ).result_rows
-
-    baseline_map = {r[0]: r[1] for r in baseline_rows}
+    district_avg_kwh = round(district_avg_row[0][0], 3) if district_avg_row and district_avg_row[0][0] else 0.0
 
     entries = []
-    for rank, (block_id, avg_kwh) in enumerate(current_rows, start=1):
-        baseline = baseline_map.get(block_id, avg_kwh)
-        reduction_pct = round(((baseline - avg_kwh) / baseline * 100) if baseline else 0, 1)
-        lat, lng = BLOCK_COORDS.get(block_id, (1.427, 103.836))
+    block_no_map: dict[str, str] = {}
+    for rank, (postal_code, avg_kwh) in enumerate(current_rows, start=1):
+        reduction_pct = round(((district_avg_kwh - avg_kwh) / district_avg_kwh * 100) if district_avg_kwh else 0, 1)
+        lat, lng = POSTAL_COORDS.get(postal_code, (1.427, 103.836))
+        # Try OneMap for real coords, fall back to hardcoded
+        onemap = geocode_postal(postal_code)
+        if onemap:
+            lat, lng = onemap
+
+        # Resolve block number (e.g. "339B")
+        blk = get_block_no(postal_code)
+        if blk:
+            block_no_map[postal_code] = blk
 
         entries.append(BlockMapEntry(
-            block_id=block_id,
+            postal_code=postal_code,
+            block_no=blk,
             district=district,
             avg_kwh=round(avg_kwh, 3),
             reduction_pct=reduction_pct,
@@ -74,4 +102,4 @@ def get_map(
             lng=lng,
         ))
 
-    return MapResponse(district=district, blocks=entries)
+    return MapResponse(district=district, blocks=entries, block_no_map=block_no_map)

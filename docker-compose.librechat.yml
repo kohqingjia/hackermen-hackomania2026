@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:7-jammy
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    restart: always
+    depends_on:
+      - mongodb
+    environment:
+      MONGO_URI: "mongodb://mongodb:27017/LibreChat"
+      DOMAIN_CLIENT: "http://localhost:3090"
+      DOMAIN_SERVER: "http://localhost:3090"
+      # Auth
+      JWT_SECRET: "blockbattles-jwt-secret-change-in-prod"
+      JWT_REFRESH_SECRET: "blockbattles-refresh-secret-change-in-prod"
+      ALLOW_EMAIL_LOGIN: "true"
+      ALLOW_REGISTRATION: "true"
+      ALLOW_SOCIAL_LOGIN: "false"
+      ALLOW_SOCIAL_REGISTRATION: "false"
+      ALLOW_UNVERIFIED_EMAIL: "true"
+      # Disable built-in search to keep it lightweight
+      SEARCH: "false"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+    volumes:
+      - ./librechat.yaml:/app/librechat.yaml
+      - librechat_images:/app/client/public/images
+    # Do NOT expose port 3080 directly — use the nginx proxy on 3090
+    expose:
+      - "3080"
+
+  # nginx proxy strips X-Frame-Options so LibreChat can be embedded in our iframe
+  librechat-proxy:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "3090:3090"
+    volumes:
+      - ./nginx.librechat.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - librechat
+
+volumes:
+  mongodb_data:
+  librechat_images:

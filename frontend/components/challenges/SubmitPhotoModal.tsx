@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { Challenge } from "@/lib/types";
+import LeafIcon from "@/components/shared/LeafIcon";
 
 interface SubmitPhotoModalProps {
   challenge: Challenge;
@@ -32,8 +33,8 @@ export default function SubmitPhotoModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 backdrop-blur-sm">
-      <div className="bg-white rounded-t-3xl w-full max-w-md p-6 animate-slide-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -90,8 +91,11 @@ export default function SubmitPhotoModal({
 
         {/* Points summary */}
         <div className="bg-sp-chart rounded-xl p-3 flex justify-between items-center mb-4">
-          <span className="text-sm text-sp-text">Points earned</span>
-          <span className="text-lg font-bold text-sp-teal">+{challenge.points}</span>
+          <span className="text-sm text-sp-text">Earned</span>
+          <span className="text-lg font-bold text-sp-teal inline-flex items-center gap-1">
+            <span>+{challenge.points}</span>
+            <LeafIcon className="w-5 h-5 text-green-600" />
+          </span>
         </div>
 
         {/* Submit */}
