@@ -129,6 +129,12 @@ export async function getAIMonthlyAnalysis(
   return request<import("./types").AIMonthlyAnalysisResponse>(_url("/api/ai/analyze"));
 }
 
+export async function getAIInsightContext(
+  date?: string,
+): Promise<import("./types").AIInsightContextResponse> {
+  return request<import("./types").AIInsightContextResponse>(_url("/api/ai/insights_context", date ? { date } : undefined));
+}
+
 // ---- Insights ----
 
 export async function getAnomaly(

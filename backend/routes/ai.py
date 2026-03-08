@@ -15,12 +15,14 @@ from utils.datetime_helper import get_app_date
 from utils.user_resolver import resolve_user_id
 from services.openai_service import (
     generate_usage_insight,
+    generate_usage_context,
     generate_recommendations,
     generate_monthly_analysis,
     chat_with_coach,
 )
 from models.schemas import (
     AIInsightResponse,
+    AIInsightContextResponse,
     AIRecommendResponse,
     AIMonthlyAnalysisResponse,
     AIRecommendation,
@@ -90,6 +92,59 @@ def _get_user(client, user_id: str) -> dict:
     result["district"] = str(result["district"])
     return result
 
+@router.get("/insights_context", response_model = AIInsightContextResponse)
+def get_insights_context(
+    query_date: str = Query(default=None, alias="date"),
+    user_id: Optional[str] = Query(default=None),
+):
+    """Return the user's energy context in natural language, for use as additional context in the /chat endpoint."""
+    client = get_client()
+    effective_uid = resolve_user_id(user_id)
+    user = _get_user(client, effective_uid)
+    target_date = date.fromisoformat(query_date) if query_date else get_app_date()
+
+    household_id = user["household_id"]
+
+    def daily_total(hid: str, d: date) -> float:
+        rows = client.query(
+            """SELECT sum(`Consumption(kWh)`)
+            FROM consumption_per_household_daily
+            WHERE HouseholdID={hid:String}
+            AND Day={d:Date}
+            """,
+            parameters={"hid": hid, "d": d.isoformat()},
+        ).result_rows
+        return float(rows[0][0] or 0)
+
+    # Block average daily usage
+    def block_avg(postal_code: str, d: date) -> float:
+        rows = client.query(
+            """
+            SELECT avg(`Consumption(kWh)`)
+            FROM consumption_per_household_daily e
+            JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
+            WHERE hd.PostalCode = {pc:String} AND e.Day = {d:Date}
+            """,
+            parameters={"pc": postal_code, "d": d.isoformat()},
+        ).result_rows
+        return float(rows[0][0] or 0)
+    
+    user_kwh = daily_total(household_id, target_date)
+    block_avg_kwh = block_avg(user["postal_code"], target_date)
+    difference = user_kwh - block_avg_kwh
+
+    result = generate_usage_context(
+        user_id=effective_uid,
+        user_kwh=user_kwh,
+        block_avg_kwh=block_avg_kwh,
+        difference=difference
+    )
+
+    return AIInsightContextResponse(
+        user_id=effective_uid,
+        context=result,
+        generated_at=datetime.utcnow().isoformat()
+    )
 
 @router.get("/insights", response_model=AIInsightResponse)
 def get_insights(
@@ -119,7 +174,7 @@ def get_insights(
     def block_total(postal_code: str, d: date) -> float:
         rows = client.query(
             """
-            SELECT sum(`Consumption(kWh)`
+            SELECT sum(`Consumption(kWh)`)
             FROM consumption_per_household_daily e
             JOIN details_per_household hd ON e.HouseholdID = toString(hd.HouseholdID)
             WHERE hd.PostalCode = {pc:String} AND e.Day = {d:Date}
