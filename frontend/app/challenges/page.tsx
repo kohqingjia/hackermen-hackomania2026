@@ -158,7 +158,7 @@ export default function ChallengesPage() {
           <span>Earn GreenUP</span>
           <LeafIcon className="w-5 h-5 text-green-600" />
         </h1>
-        <p className="text-xs text-sp-text-secondary">Complete challenges to earn points for your block</p>
+        <p className="text-xs text-sp-text-secondary">Complete solo challenges to earn bonus leaves!</p>
       </div>
 
       {/* Points summary */}
