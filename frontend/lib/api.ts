@@ -64,14 +64,6 @@ export async function getRoadNames(postalCodes: string[]): Promise<Record<string
   return request<Record<string, string>>(`/api/onboarding/road-names?postal_codes=${postalCodes.join(",")}`);
 }
 
-// ---- Usage (Dashboard) ----
-
-export async function getUsage(
-  date?: string,
-): Promise<import("./types").UsageResponse> {
-  return request<import("./types").UsageResponse>(_url("/api/usage/", date ? { date } : undefined));
-}
-
 // ---- Block View ----
 
 export async function getBlockUsage(

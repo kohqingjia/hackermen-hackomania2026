@@ -29,10 +29,3 @@ export function mergeBlockNames(map: Record<string, string> | undefined | null):
 export function blockLabel(postalCode: string): string {
   return _cache[postalCode] ?? postalCode;
 }
-
-/**
- * Get the raw block number or undefined if not cached.
- */
-export function getBlockNo(postalCode: string): string | undefined {
-  return _cache[postalCode];
-}

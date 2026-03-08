@@ -12,8 +12,6 @@ import Card, { SectionHeader, LoadingCard } from "@/components/shared/Card";
 import BlockComparisonChart, { type ChartVariant } from "@/components/block/BlockComparisonChart";
 import BlockStats from "@/components/block/BlockStats";
 import AIInsightCard from "@/components/dashboard/AIInsightCard";
-import BillTracker from "@/components/dashboard/BillTracker";
-import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
 import { EnergyBuilding } from "@/components/dashboard/BuildingGraph";
 import clsx from "clsx";
 import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getAIInsightContext, getOnboarding, getRoadNames, getAppDate } from "@/lib/api";

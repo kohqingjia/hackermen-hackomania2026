@@ -30,30 +30,6 @@ export function SectionHeader({ title, subtitle }: { title: string; subtitle?: s
   );
 }
 
-export function StatBadge({
-  value,
-  label,
-  variant = "default",
-}: {
-  value: string;
-  label: string;
-  variant?: "default" | "good" | "bad" | "alert";
-}) {
-  const colors = {
-    default: "bg-sp-chart text-sp-teal-dark",
-    good:    "bg-green-50 text-green-700",
-    bad:     "bg-red-50 text-red-600",
-    alert:   "bg-sp-alert-light text-sp-alert",
-  };
-
-  return (
-    <div className={clsx("rounded-xl px-3 py-2 text-center", colors[variant])}>
-      <div className="text-lg font-bold">{value}</div>
-      <div className="text-[10px] font-medium uppercase tracking-wide">{label}</div>
-    </div>
-  );
-}
-
 export function LoadingCard() {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-pulse">

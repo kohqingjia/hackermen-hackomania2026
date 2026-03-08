@@ -5,7 +5,6 @@ API docs: https://www.onemap.gov.sg/apidocs/
 """
 
 import httpx
-from functools import lru_cache
 from config import settings
 
 ONEMAP_SEARCH_URL = "https://www.onemap.gov.sg/api/common/elastic/search"
