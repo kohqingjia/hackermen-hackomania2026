@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import type { LeaderboardEntry } from "@/lib/types";
+import { blockLabel } from "@/lib/blockNames";
 
 interface LeaderboardListProps {
   entries: LeaderboardEntry[];
@@ -7,9 +8,9 @@ interface LeaderboardListProps {
 }
 
 const RANK_POINTS_LABEL: Record<number, { label: string; bg: string; text: string }> = {
-  1: { label: "+100 pts", bg: "bg-yellow-50", text: "text-yellow-700" },
-  2: { label: "+80 pts",  bg: "bg-gray-50",   text: "text-gray-600" },
-  3: { label: "+25 pts",  bg: "bg-orange-50", text: "text-orange-600" },
+  1: { label: "+100 🍃", bg: "bg-yellow-50", text: "text-yellow-700" },
+  2: { label: "+80 🍃",  bg: "bg-gray-50",   text: "text-gray-600" },
+  3: { label: "+25 🍃",  bg: "bg-orange-50", text: "text-orange-600" },
 };
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -46,7 +47,7 @@ export default function LeaderboardList({ entries, userPostalCode }: Leaderboard
             {/* Block info */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sp-text truncate">
-                {entry.postal_code}
+                Blk {blockLabel(entry.postal_code)}
                 {isUser && <span className="ml-1 text-[10px] font-normal text-sp-teal">(You)</span>}
               </p>
               <div className="flex items-center gap-2 mt-0.5">

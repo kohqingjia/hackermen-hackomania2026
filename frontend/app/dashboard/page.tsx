@@ -16,14 +16,16 @@ import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
 import { EnergyBuilding } from "@/components/dashboard/BuildingGraph";
 import clsx from "clsx";
-import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getAIInsightContext, getOnboarding } from "@/lib/api";
+import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getAIInsightContext, getOnboarding, getRoadNames } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
+import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 import StatBox from "@/components/shared/StatBox";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [postalCode, setPostalCode] = useState("752339");
+  const [roadName, setRoadName] = useState("Sembawang");
   const [blockUsage, setBlockUsage] = useState<BlockUsageResponse | null>(null);
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
   const [insightContext, setInsightContext] = useState<string>("");
@@ -44,7 +46,9 @@ export default function DashboardPage() {
         console.log(result);
         const userId = String(result.user_id ?? result.UserID ?? "").trim();
         const householdId = String(result.household_id ?? result.HouseholdID ?? "").trim();
-        const postalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
+        const backendPostalCode = String(result.postal_code ?? result.PostalCode ?? result.Postal_Code ?? "").trim();
+        const storedPostalCode = localStorage.getItem("powerblock_postal_code") || "";
+        const postalCode = backendPostalCode || storedPostalCode;
 
         if (householdId) {
           localStorage.setItem("powerblock_household_id", householdId);
@@ -75,6 +79,11 @@ export default function DashboardPage() {
           .finally(() => setLoadingUsage(false));
 
         getAIMonthlyAnalysis().then(setMonthly).catch(console.error);
+
+        // Pre-fetch leaderboard to populate block name cache (postal_code → block_no)
+        getLeaderboard("Yishun")
+          .then((res) => { if (res.block_no_map) mergeBlockNames(res.block_no_map); })
+          .catch(console.error);
         getAIInsightContext().then((result) => setInsightContext(result.context)).catch(console.error);
       })
       .catch(() => {
@@ -85,6 +94,13 @@ export default function DashboardPage() {
         router.replace("/onboarding");
       });
   }, [router]);
+
+  useEffect(() => {
+    if (!postalCode) return;
+    getRoadNames([postalCode])
+      .then((roadMap) => setRoadName(roadMap[postalCode] || "Sembawang"))
+      .catch(() => setRoadName("Sembawang"));
+  }, [postalCode]);
 
   if (!backendChecked || !userId) {
     return (
@@ -105,7 +121,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-sp-text-secondary">{today}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
-          <p className="text-xs text-sp-text-secondary">{postalCode}, Sembawang</p> {/**To do: change location to db data instead of hardcoded yishun */}
+          <p className="text-xs text-sp-text-secondary">Blk {blockLabel(postalCode)}, {roadName}</p>
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">
           <svg className="w-5 h-5 stroke-sp-teal" fill="none" viewBox="0 0 24 24" strokeWidth={2}>
@@ -137,7 +153,7 @@ export default function DashboardPage() {
             userUsage={blockUsage.user_kwh}
             blockAverage={blockUsage.block_avg_kwh}
             threshold={Math.max(blockUsage.user_kwh, blockUsage.block_avg_kwh) * 1.3 || 1}
-            blockName={`BLK ${postalCode}`}
+            blockName={`BLK ${blockLabel(postalCode)}`}
             timeLabel="Today's total usage"
           />
         </Card>

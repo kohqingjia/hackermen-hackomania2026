@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query
 from database.clickhouse import get_client
 from models.schemas import LeaderboardResponse, LeaderboardEntry, WeeklyTopThree, WeeklyTopBlock
 from utils.datetime_helper import get_app_date
+from services.onemap_service import get_block_no_batch
 
 router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
@@ -95,6 +96,10 @@ def get_leaderboard(
     ).result_rows
     district_avg_kwh = round(district_avg_row[0][0], 3) if district_avg_row and district_avg_row[0][0] else 0.0
 
+    # Resolve all postal codes to HDB block numbers in one batch
+    all_postal_codes = [r[0] for r in current]
+    block_no_map = get_block_no_batch(all_postal_codes)
+
     entries = []
     for rank, (postal_code, avg_kwh) in enumerate(current, start=1):
         prev_avg = prev_map.get(postal_code, avg_kwh)
@@ -105,6 +110,7 @@ def get_leaderboard(
         entries.append(LeaderboardEntry(
             rank=rank,
             postal_code=postal_code,
+            block_no=block_no_map.get(postal_code),
             avg_kwh=round(avg_kwh, 3),
             reduction_pct=reduction_pct,
             points=points,
@@ -134,7 +140,7 @@ def get_leaderboard(
 
         top3_rows = week_rows[:3]
         winners = [
-            WeeklyTopBlock(rank=i, postal_code=postal_code, avg_kwh=round(avg_kwh, 3))
+            WeeklyTopBlock(rank=i, postal_code=postal_code, block_no=block_no_map.get(postal_code), avg_kwh=round(avg_kwh, 3))
             for i, (postal_code, avg_kwh) in enumerate(top3_rows, start=1)
         ]
         block_avg_kwh_by_block = {
@@ -157,4 +163,5 @@ def get_leaderboard(
         entries=entries,
         weekly_top3_history=weekly_top3_history,
         resets_in_days=resets_in,
+        block_no_map=block_no_map,
     )

@@ -81,6 +81,7 @@ class BlockUsageResponse(BaseModel):
 
 class BlockMapEntry(BaseModel):
     postal_code: str        # replaces block_id
+    block_no: Optional[str] = None  # HDB block number from OneMap (e.g. "339B")
     district: str
     avg_kwh: float
     reduction_pct: float    # vs district average
@@ -92,6 +93,7 @@ class BlockMapEntry(BaseModel):
 class MapResponse(BaseModel):
     district: str
     blocks: list[BlockMapEntry]
+    block_no_map: dict[str, str] = {}  # postal_code -> block_no
 
 
 # --- Leaderboard ---
@@ -99,6 +101,7 @@ class MapResponse(BaseModel):
 class LeaderboardEntry(BaseModel):
     rank: int
     postal_code: str        # replaces block_id
+    block_no: Optional[str] = None  # HDB block number from OneMap
     avg_kwh: float
     reduction_pct: float
     points: int
@@ -108,6 +111,7 @@ class LeaderboardEntry(BaseModel):
 class WeeklyTopBlock(BaseModel):
     rank: int
     postal_code: str
+    block_no: Optional[str] = None
     avg_kwh: float
 
 
@@ -124,6 +128,7 @@ class LeaderboardResponse(BaseModel):
     entries: list[LeaderboardEntry]
     weekly_top3_history: list[WeeklyTopThree]
     resets_in_days: int
+    block_no_map: dict[str, str] = {}  # postal_code -> block_no
 
 
 # --- Challenges ---

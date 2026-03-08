@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Card from "@/components/shared/Card";
 import type { LeaderboardEntry } from "@/lib/types";
+import { blockLabel } from "@/lib/blockNames";
 
 interface BlockWarsWidgetProps {
   userPostalCode: string;
@@ -40,7 +41,7 @@ export default function BlockWarsWidget({ userPostalCode, entries, resetsInDays 
             >
               <span className="text-base">{medals[i]}</span>
               <span className={`flex-1 text-sm font-medium ${isUser ? "text-sp-teal-dark" : "text-sp-text"}`}>
-                {entry.postal_code} {isUser && <span className="text-[10px]">(You)</span>}
+                Blk {blockLabel(entry.postal_code)} {isUser && <span className="text-[10px]">(You)</span>}
               </span>
               <span className="text-xs text-green-600 font-semibold">-{entry.reduction_pct}%</span>
               <span className="text-xs text-sp-text-secondary">+{entry.points}pt</span>
@@ -53,7 +54,7 @@ export default function BlockWarsWidget({ userPostalCode, entries, resetsInDays 
       {userEntry && userEntry.rank > 3 && (
         <div className="mt-2 flex items-center gap-3 px-3 py-2 rounded-xl bg-sp-chart">
           <span className="text-sm font-bold text-sp-teal">#{userEntry.rank}</span>
-          <span className="flex-1 text-sm font-medium text-sp-teal-dark">{userPostalCode} (You)</span>
+          <span className="flex-1 text-sm font-medium text-sp-teal-dark">Blk {blockLabel(userPostalCode)} (You)</span>
           <span className="text-xs text-green-600 font-semibold">-{userEntry.reduction_pct}%</span>
         </div>
       )}

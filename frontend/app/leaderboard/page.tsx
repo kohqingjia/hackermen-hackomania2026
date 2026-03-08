@@ -11,6 +11,7 @@ import Card, { LoadingCard } from "@/components/shared/Card";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
 import { getLeaderboard } from "@/lib/api";
 import type { LeaderboardResponse } from "@/lib/types";
+import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 
 export default function LeaderboardPage() {
   const [userPostalCode, setUserPostalCode] = useState("752339");
@@ -24,7 +25,11 @@ export default function LeaderboardPage() {
     setUserPostalCode(bid);
 
     getLeaderboard("Yishun")
-      .then(setData)
+      .then((res) => {
+        // Cache block number mapping from API response
+        if (res.block_no_map) mergeBlockNames(res.block_no_map);
+        setData(res);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -40,14 +45,14 @@ export default function LeaderboardPage() {
   const displayRows = [
     ...(selectedHistory?.winners ?? []).map((winner) => ({
       key: `${selectedHistory?.week_start}-${winner.rank}`,
-      blockId: winner.postal_code,
+      blockId: blockLabel(winner.postal_code),
       avgKwh: winner.avg_kwh,
       rank: winner.rank,
       isUser: winner.postal_code === userPostalCode,
     })),
     ...(!userInTop3 && userBlockKwh !== undefined ? [{
       key: `${selectedHistory?.week_start}-${userPostalCode}`,
-      blockId: userPostalCode,
+      blockId: blockLabel(userPostalCode),
       avgKwh: userBlockKwh,
       rank: null,
       isUser: true,
@@ -93,14 +98,14 @@ export default function LeaderboardPage() {
         <p className="text-m font-semibold opacity-80 mb-2">Weekly Points</p>
         <div className="flex justify-around">
           {[
-            { rank: "1st", pts: "100 pts", emoji: "🥇" },
-            { rank: "2nd", pts: "80 pts",  emoji: "🥈" },
-            { rank: "3rd", pts: "25 pts",  emoji: "🥉" },
-          ].map(({ rank, pts, emoji }) => (
+            { rank: "1st", points: "100", emoji: "🥇" },
+            { rank: "2nd", points: "80",  emoji: "🥈" },
+            { rank: "3rd", points: "25",  emoji: "🥉" },
+          ].map(({ rank, points, emoji }) => (
             <div key={rank} className="text-center">
               <p className="text-lg">{emoji}</p>
               <p className="text-s font-bold">{rank}</p>
-              <p className="text-[10px] opacity-80">+{pts}</p>
+              <p className="text-[10px] opacity-80 inline-flex items-center gap-1 justify-center">+{points} 🍃</p>
             </div>
           ))}
         </div>
@@ -177,7 +182,7 @@ export default function LeaderboardPage() {
                         </svg>
                       )}
                     </span>
-                    <span>{row.blockId}</span>
+                    <span>Blk {row.blockId}</span>
                     {row.isUser && (
                       <span className="text-xs font-medium text-white/90">(You)</span>
                     )}
