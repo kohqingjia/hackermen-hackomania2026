@@ -16,7 +16,7 @@ import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
 import { EnergyBuilding } from "@/components/dashboard/BuildingGraph";
 import clsx from "clsx";
-import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getOnboarding } from "@/lib/api";
+import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getOnboarding, getRoadNames } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
 import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 import StatBox from "@/components/shared/StatBox";
@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [postalCode, setPostalCode] = useState("752339");
+  const [roadName, setRoadName] = useState("Sembawang");
   const [blockUsage, setBlockUsage] = useState<BlockUsageResponse | null>(null);
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
@@ -90,6 +91,13 @@ export default function DashboardPage() {
       });
   }, [router]);
 
+  useEffect(() => {
+    if (!postalCode) return;
+    getRoadNames([postalCode])
+      .then((roadMap) => setRoadName(roadMap[postalCode] || "Sembawang"))
+      .catch(() => setRoadName("Sembawang"));
+  }, [postalCode]);
+
   if (!backendChecked || !userId) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -109,7 +117,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-sp-text-secondary">{today}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
-          <p className="text-xs text-sp-text-secondary">Blk {blockLabel(postalCode)}, Sembawang</p> {/**To do: change location to db data instead of hardcoded yishun */}
+          <p className="text-xs text-sp-text-secondary">Blk {blockLabel(postalCode)}, {roadName}</p>
         </div>
         <div className="w-10 h-10 rounded-full bg-sp-chart flex items-center justify-center">
           <svg className="w-5 h-5 stroke-sp-teal" fill="none" viewBox="0 0 24 24" strokeWidth={2}>

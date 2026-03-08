@@ -5,11 +5,12 @@ GET  /api/onboarding  — resolve onboarding state from env USER_ID / HOUSEHOLD_
 """
 
 import uuid
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from database.clickhouse import get_client
 from config import settings
 from models.schemas import OnboardingRequest, OnboardingResponse
+from services.onemap_service import get_road_names_batch
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
@@ -137,3 +138,10 @@ def get_onboarding():
         },
         headers=NO_CACHE_HEADERS,
     )
+
+
+@router.get("/road-names")
+def road_names(postal_codes: str = Query(..., description="Comma-separated postal codes")):
+    """Return road names for a list of postal codes via OneMap API."""
+    codes = [c.strip() for c in postal_codes.split(",") if c.strip()]
+    return get_road_names_batch(codes)

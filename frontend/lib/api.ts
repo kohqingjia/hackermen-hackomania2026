@@ -60,6 +60,10 @@ export async function getOnboarding() {
   return request<Record<string, unknown>>(`/api/onboarding?${params}`);
 }
 
+export async function getRoadNames(postalCodes: string[]): Promise<Record<string, string>> {
+  return request<Record<string, string>>(`/api/onboarding/road-names?postal_codes=${postalCodes.join(",")}`);
+}
+
 // ---- Usage (Dashboard) ----
 
 export async function getUsage(
