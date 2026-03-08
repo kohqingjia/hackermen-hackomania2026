@@ -73,6 +73,7 @@ export interface WeeklyComparisonPoint {
 
 export interface BlockMapEntry {
   postal_code: string;
+  block_no?: string;
   district: string;
   avg_kwh: number;
   reduction_pct: number;
@@ -84,6 +85,7 @@ export interface BlockMapEntry {
 export interface MapResponse {
   district: string;
   blocks: BlockMapEntry[];
+  block_no_map?: Record<string, string>;
 }
 
 // ---- Leaderboard ----
@@ -91,6 +93,7 @@ export interface MapResponse {
 export interface LeaderboardEntry {
   rank: number;
   postal_code: string;
+  block_no?: string;
   avg_kwh: number;
   reduction_pct: number;
   points: number;
@@ -100,6 +103,7 @@ export interface LeaderboardEntry {
 export interface WeeklyTopBlock {
   rank: number;
   postal_code: string;
+  block_no?: string;
   avg_kwh: number;
 }
 
@@ -116,6 +120,7 @@ export interface LeaderboardResponse {
   entries: LeaderboardEntry[];
   weekly_top3_history: WeeklyTopThree[];
   resets_in_days: number;
+  block_no_map?: Record<string, string>;
 }
 
 // ---- Challenges ----

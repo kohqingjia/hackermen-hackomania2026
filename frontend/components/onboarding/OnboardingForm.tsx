@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getOnboarding, submitOnboarding } from "@/lib/api";
+import { getOnboarding, submitOnboarding, getRoadNames } from "@/lib/api";
 import type { OnboardingForm as FormData } from "@/lib/types";
 
 const FLAT_TYPES = ["3-room", "4-room", "5-room"];
@@ -19,6 +19,7 @@ export default function OnboardingForm() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [roadNames, setRoadNames] = useState<Record<string, string>>({});
   const [form, setForm] = useState<FormData>({
     household_id: "",
     district: "Sembawang",
@@ -49,6 +50,10 @@ export default function OnboardingForm() {
       .catch(() => {
         // No preconfigured backend profile found; continue normal onboarding flow.
       });
+
+    getRoadNames(POSTAL_CODES)
+      .then(setRoadNames)
+      .catch(() => {});
   }, []);
 
   const update = (key: keyof FormData, value: unknown) =>
@@ -118,7 +123,7 @@ export default function OnboardingForm() {
             onChange={(e) => update("postal_code", e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sp-text text-sm focus:outline-none focus:border-sp-teal bg-white"
           >
-            {POSTAL_CODES.map((pc) => <option key={pc} value={pc}>{pc} Yishun</option>)}
+            {POSTAL_CODES.map((pc) => <option key={pc} value={pc}>{pc} {roadNames[pc] || ""}</option>)}
           </select>
         </div>
         <div>

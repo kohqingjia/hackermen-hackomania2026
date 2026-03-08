@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import BlockMap from "@/components/map/BlockMap";
 import { getMap } from "@/lib/api";
 import type { MapResponse, BlockMapEntry } from "@/lib/types";
+import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 import clsx from "clsx";
 
 const POSTAL_COORDS: Record<string, [number, number]> = {
@@ -53,6 +54,8 @@ export default function MapPage() {
     async function loadMapData() {
       const applyData = (data: MapResponse, isFallback = false) => {
         setUsingFallback(isFallback);
+        // Cache block number mapping from API response
+        if (data.block_no_map) mergeBlockNames(data.block_no_map);
         setMapData(data);
         setSelected(null);
       };
@@ -153,7 +156,7 @@ export default function MapPage() {
               </span>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-sp-text">
-                  {block.postal_code} {isUser && <span className="text-[10px] text-sp-teal">(You)</span>}
+                  Blk {blockLabel(block.postal_code)} {isUser && <span className="text-[10px] text-sp-teal">(You)</span>}
                 </p>
                 <p className="text-xs text-sp-text-secondary">{block.avg_kwh.toFixed(2)} kWh/day</p>
               </div>

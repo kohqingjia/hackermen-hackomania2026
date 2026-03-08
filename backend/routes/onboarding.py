@@ -5,13 +5,15 @@ GET  /api/onboarding  — resolve onboarding state from env USER_ID / HOUSEHOLD_
 """
 
 import uuid
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from database.clickhouse import get_client
 from config import settings
 from models.schemas import OnboardingRequest, OnboardingResponse
+from services.onemap_service import get_road_names_batch
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
+ENV_USER_ID = (settings.user_id or "").strip()
 
 NO_CACHE_HEADERS = {
     "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -28,7 +30,7 @@ def create_onboarding(data: OnboardingRequest):
             detail="HOUSEHOLD_ID is required in backend env before onboarding can begin.",
         )
 
-    configured_user_id = (settings.user_id or "").strip()
+    configured_user_id = ENV_USER_ID
     user_id = configured_user_id or str(uuid.uuid4())
     household_id = settings.household_id
     client = get_client()
@@ -49,12 +51,10 @@ def create_onboarding(data: OnboardingRequest):
         parameters={"hid": household_id},
     ).result_rows
     if existing:
-        found_uid = str(existing[0][0])
-        settings.user_id = found_uid          # session-only, lost on restart
-        return OnboardingResponse(
-            user_id=found_uid,
-            message="Existing onboarding profile found for HOUSEHOLD_ID.",
-        )
+        # Existing profiles may contain key columns that cannot be updated in-place.
+        # Create a new user profile row so latest onboarding selections (e.g. flat_type)
+        # are always reflected immediately across analytics endpoints.
+        user_id = str(uuid.uuid4())
 
     # Insert into details_per_household
     client.insert(
@@ -119,16 +119,19 @@ def get_onboarding():
 
     if effective_user_id:
         client = get_client()
-        user_exists = client.query(
-            "SELECT 1 FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
+        user_profile = client.query(
+            "SELECT PostalCode FROM details_per_household WHERE toString(UserID) = {uid:String} LIMIT 1",
             parameters={"uid": effective_user_id},
         ).result_rows
-        if user_exists:
-            resp = OnboardingResponse(
-                user_id=effective_user_id,
-                message="User found.",
+        if user_profile:
+            return JSONResponse(
+                content={
+                    "user_id": effective_user_id,
+                    "postal_code": str(user_profile[0][0] or "").strip(),
+                    "message": "User found.",
+                },
+                headers=NO_CACHE_HEADERS,
             )
-            return JSONResponse(content=resp.model_dump(), headers=NO_CACHE_HEADERS)
 
     # No valid user found — require onboarding
     return JSONResponse(
@@ -139,3 +142,10 @@ def get_onboarding():
         },
         headers=NO_CACHE_HEADERS,
     )
+
+
+@router.get("/road-names")
+def road_names(postal_codes: str = Query(..., description="Comma-separated postal codes")):
+    """Return road names for a list of postal codes via OneMap API."""
+    codes = [c.strip() for c in postal_codes.split(",") if c.strip()]
+    return get_road_names_batch(codes)
