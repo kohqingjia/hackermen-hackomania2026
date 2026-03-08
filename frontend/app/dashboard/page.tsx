@@ -16,7 +16,7 @@ import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
 import { EnergyBuilding } from "@/components/dashboard/BuildingGraph";
 import clsx from "clsx";
-import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getAIInsightContext, getOnboarding, getRoadNames } from "@/lib/api";
+import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getAIInsightContext, getOnboarding, getRoadNames, getAppDate } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
 import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 import StatBox from "@/components/shared/StatBox";
@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [loadingUsage, setLoadingUsage] = useState(true);
   const [chartVariant, setChartVariant] = useState<ChartVariant>("per-day");
   const [backendChecked, setBackendChecked] = useState(false);
+  const [appDate, setAppDate] = useState("Tuesday, 31 December 2025");
 
   const variantSubtitle: Record<ChartVariant, string> = {
     "per-day": "Half-hourly usage today",
@@ -102,6 +103,12 @@ export default function DashboardPage() {
       .catch(() => setRoadName("Sembawang"));
   }, [postalCode]);
 
+  useEffect(() => {
+    getAppDate()
+      .then((result) => setAppDate(result.formatted))
+      .catch(() => setAppDate(new Date().toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" })));
+  }, []);
+
   if (!backendChecked || !userId) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -110,16 +117,12 @@ export default function DashboardPage() {
     );
   }
 
-  const today = new Date().toLocaleDateString("en-SG", {
-    weekday: "long", day: "numeric", month: "long",
-  });
-
   return (
     <div className="px-4 py-6 space-y-4 page-enter">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-xs text-sp-text-secondary">{today}</p>
+          <p className="text-xs text-sp-text-secondary">{appDate}</p>
           <h1 className="text-xl font-bold text-sp-text mt-0.5">Good evening!</h1>
           <p className="text-xs text-sp-text-secondary">Blk {blockLabel(postalCode)}, {roadName}</p>
         </div>

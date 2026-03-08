@@ -164,3 +164,7 @@ export async function updateTargetBill(
     { method: "PATCH", body: JSON.stringify({ target_bill: targetBill }) },
   );
 }
+
+export async function getAppDate(): Promise<{ date: string; formatted: string }> {
+  return request<{ date: string; formatted: string }>("/api/app-date");
+}

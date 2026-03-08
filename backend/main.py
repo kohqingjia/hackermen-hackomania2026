@@ -10,6 +10,7 @@ from routes.challenges import router as challenges_router
 from routes.ai import router as ai_router
 from routes.openai_compat import router as openai_compat_router
 from database.clickhouse import init_schema
+from utils.datetime_helper import get_app_date
 
 app = FastAPI(
     title="PowerBlock API",
@@ -49,3 +50,16 @@ def on_startup():
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "PowerBlock API"}
+
+
+@app.get("/api/app-date")
+def app_date():
+    """Return the app's current date (from CURRENT_APP_DATE env var or today)."""
+    current = get_app_date()
+    # Format: "Tuesday, 31 December 2025"
+    day_num = current.day
+    formatted = current.strftime(f"%A, {day_num} %B %Y")
+    return {
+        "date": current.isoformat(),
+        "formatted": formatted,
+    }
