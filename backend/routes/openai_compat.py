@@ -6,6 +6,7 @@ POST /v1/chat/completions
 GET  /v1/models
 """
 
+import calendar
 import json
 import math
 import time
@@ -18,7 +19,7 @@ from fastapi.responses import StreamingResponse
 from utils.datetime_helper import get_app_date
 from pydantic import BaseModel
 
-from config import settings
+from config import settings, SP_TARIFF
 from database.clickhouse import get_client
 from openai import OpenAI
 
@@ -302,14 +303,15 @@ def _build_user_context() -> str:
             "WHERE HouseholdID={hid:String} AND Day BETWEEN {s:Date} AND {e:Date}",
             {"hid": household_id, "s": month_start.isoformat(), "e": today.isoformat()},
         )
-        days_in_month = (today - month_start).days + 1
-        monthly_daily_avg = _safe(month_kwh / days_in_month) if days_in_month > 0 else 0
-        projected_monthly = _safe(monthly_daily_avg * 30)
-        est_bill = _safe(projected_monthly * 0.3168)  # SP tariff approx
+        days_elapsed = (today - month_start).days + 1
+        days_in_month = calendar.monthrange(today.year, today.month)[1]
+        monthly_daily_avg = _safe(month_kwh / days_elapsed) if days_elapsed > 0 else 0
+        projected_monthly = _safe(monthly_daily_avg * days_in_month)
+        est_bill = _safe(projected_monthly * SP_TARIFF)
         parts.append(
-            f"[THIS MONTH] {month_kwh} kWh over {days_in_month} days | "
+            f"[THIS MONTH] {month_kwh} kWh over {days_elapsed} days | "
             f"Daily avg: {monthly_daily_avg} kWh | "
-            f"Projected 30-day total: ~{projected_monthly} kWh (~${est_bill} SGD at $0.3168/kWh)"
+            f"Projected {days_in_month}-day total: ~{projected_monthly} kWh (~${est_bill} SGD at ${SP_TARIFF}/kWh)"
         )
 
         # ── 8. Hourly pattern analysis (last 7 days aggregate) ───────────
@@ -445,11 +447,11 @@ def _build_user_context() -> str:
 
         # ── 13. Budget tracking (if target bill is set) ───────────────────
         if target_bill_val:
-            target_kwh_monthly = _safe(target_bill_val / 0.3168)  # reverse from tariff
-            target_kwh_daily = _safe(target_kwh_monthly / 30)
+            target_kwh_monthly = _safe(target_bill_val / SP_TARIFF)  # reverse from tariff
+            target_kwh_daily = _safe(target_kwh_monthly / days_in_month)
             on_track = projected_monthly <= target_kwh_monthly
             kwh_over_under = _safe(projected_monthly - target_kwh_monthly)
-            bill_over_under = _safe(kwh_over_under * 0.3168)
+            bill_over_under = _safe(kwh_over_under * SP_TARIFF)
             parts.append(
                 f"[BUDGET TARGET] Monthly target: ${target_bill_val} SGD (~{target_kwh_monthly} kWh/month, ~{target_kwh_daily} kWh/day) | "
                 f"Projected: ~{projected_monthly} kWh (~${est_bill} SGD) | "

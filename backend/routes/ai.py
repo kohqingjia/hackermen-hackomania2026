@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from database.clickhouse import get_client
 from utils.datetime_helper import get_app_date
 from utils.user_resolver import resolve_user_id
+from config import SP_TARIFF
 from services.openai_service import (
     generate_usage_insight,
     generate_usage_context,
@@ -299,10 +300,15 @@ def get_monthly_analysis(
     current_kwh = month_total(household_id, current_month_start, today)
     prev_kwh = month_total(household_id, prev_month_start, prev_month_end)
 
+    days_elapsed = max(today.day, 1)
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+
     target_bill = user.get("target_bill", 0)
-    projected_bill = round(current_kwh * 0.33 * (30 / max(today.day, 1)), 2)
+    avg_daily = current_kwh / days_elapsed
+    projected_total = avg_daily * days_in_month
+    projected_bill = round(projected_total * SP_TARIFF, 2)
     change_pct = round(((current_kwh - prev_kwh) / prev_kwh * 100) if prev_kwh else 0, 1)
-    savings_sgd = round(current_kwh * 0.33 - prev_kwh * 0.33, 2)
+    savings_sgd = round(current_kwh * SP_TARIFF - prev_kwh * SP_TARIFF, 2)
     # target_reduction = 10  # default 10% target
     # on_track = change_pct <= -target_reduction
     on_track = (projected_bill <= target_bill) if target_bill else None
@@ -474,8 +480,7 @@ def get_projections(
 
     avg_daily = month_so_far / days_elapsed
     projected_total = avg_daily * days_in_month
-    tariff = 0.33  # SGD per kWh (approximate SP tariff)
-    projected_bill = round(projected_total * tariff, 2)
+    projected_bill = round(projected_total * SP_TARIFF, 2)
 
     # Read target bill from user profile (stored during onboarding)
     raw_target = user.get("target_bill")
