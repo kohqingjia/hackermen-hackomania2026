@@ -16,7 +16,7 @@ import BillTracker from "@/components/dashboard/BillTracker";
 import BlockWarsWidget from "@/components/dashboard/BlockWarsWidget";
 import { EnergyBuilding } from "@/components/dashboard/BuildingGraph";
 import clsx from "clsx";
-import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getOnboarding, getRoadNames } from "@/lib/api";
+import { getBlockUsage, getLeaderboard, getAIMonthlyAnalysis, getAIInsightContext, getOnboarding, getRoadNames } from "@/lib/api";
 import type { BlockUsageResponse, LeaderboardResponse, AIMonthlyAnalysisResponse } from "@/lib/types";
 import { mergeBlockNames, blockLabel } from "@/lib/blockNames";
 import StatBox from "@/components/shared/StatBox";
@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [roadName, setRoadName] = useState("Sembawang");
   const [blockUsage, setBlockUsage] = useState<BlockUsageResponse | null>(null);
   const [monthly, setMonthly] = useState<AIMonthlyAnalysisResponse | null>(null);
+  const [insightContext, setInsightContext] = useState<string>("");
   const [loadingUsage, setLoadingUsage] = useState(true);
   const [chartVariant, setChartVariant] = useState<ChartVariant>("per-day");
   const [backendChecked, setBackendChecked] = useState(false);
@@ -83,6 +84,7 @@ export default function DashboardPage() {
         getLeaderboard("Yishun")
           .then((res) => { if (res.block_no_map) mergeBlockNames(res.block_no_map); })
           .catch(console.error);
+        getAIInsightContext().then((result) => setInsightContext(result.context)).catch(console.error);
       })
       .catch(() => {
         localStorage.removeItem("powerblock_user_id");
@@ -134,7 +136,7 @@ export default function DashboardPage() {
       ) : blockUsage ? (
         <div>
           <BlockStats data={blockUsage} />
-          <StatBox label="Context" value="Your usage is equal to..." sub="" />
+          <StatBox label="Context" value="Your usage is equal to..." sub={insightContext || "Loading context..."} />
         </div>  
       ) : null}
 

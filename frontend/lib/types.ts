@@ -17,7 +17,7 @@ export interface OnboardingForm {
   num_aircons?: number;
   has_wfh_days?: string[];     // e.g. ["Monday","Wednesday"]
   num_wfh: number;             // 0-7
-  target_bill?: number;        // monthly target bill in dollars
+  target_bill?: number;        // monthly target bill in SGD
 }
 
 export interface OnboardingResponse {
@@ -198,6 +198,12 @@ export interface AIMonthlyAnalysisResponse {
   projected_bill_sgd: number;
   budget_sgd: number;
   narrative: string;
+  generated_at: string;
+}
+
+export interface AIInsightContextResponse {
+  user_id: string;
+  context: string;
   generated_at: string;
 }
 
