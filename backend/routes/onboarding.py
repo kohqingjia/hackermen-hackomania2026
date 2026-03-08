@@ -1,16 +1,19 @@
 """
 Onboarding route
-POST /api/onboarding  — save user profile into details_per_household + input_per_household, return user_id
-GET  /api/onboarding  — resolve onboarding state from env USER_ID / HOUSEHOLD_ID
+POST  /api/onboarding              — save user profile into details_per_household + input_per_household, return user_id
+GET   /api/onboarding              — resolve onboarding state from env USER_ID / HOUSEHOLD_ID
+PATCH /api/onboarding/target-bill  — update user's target monthly bill
 """
 
 import uuid
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from database.clickhouse import get_client
 from config import settings
 from models.schemas import OnboardingRequest, OnboardingResponse
 from services.onemap_service import get_road_names_batch
+from utils.user_resolver import resolve_user_id
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 ENV_USER_ID = (settings.user_id or "").strip()
@@ -149,3 +152,35 @@ def road_names(postal_codes: str = Query(..., description="Comma-separated posta
     """Return road names for a list of postal codes via OneMap API."""
     codes = [c.strip() for c in postal_codes.split(",") if c.strip()]
     return get_road_names_batch(codes)
+
+
+# ---- Target bill update ----
+
+class UpdateTargetBillRequest(BaseModel):
+    target_bill: float  # New target bill in SGD
+
+
+@router.patch("/target-bill")
+def update_target_bill(
+    data: UpdateTargetBillRequest,
+    user_id: str | None = Query(default=None),
+):
+    """Update the user's monthly target bill in input_per_household."""
+    effective_uid = resolve_user_id(user_id)
+    client = get_client()
+
+    # Verify user exists
+    exists = client.query(
+        "SELECT 1 FROM input_per_household WHERE UserID = {uid:String} LIMIT 1",
+        parameters={"uid": effective_uid},
+    ).result_rows
+    if not exists:
+        raise HTTPException(status_code=404, detail="User profile not found. Complete onboarding first.")
+
+    # ClickHouse MergeTree ALTER UPDATE (lightweight mutation)
+    client.command(
+        "ALTER TABLE input_per_household UPDATE Target_bill = %(tb)s WHERE UserID = %(uid)s",
+        parameters={"tb": data.target_bill, "uid": effective_uid},
+    )
+
+    return {"ok": True, "user_id": effective_uid, "target_bill": data.target_bill}

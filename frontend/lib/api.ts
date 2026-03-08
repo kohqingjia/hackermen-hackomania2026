@@ -155,3 +155,12 @@ export async function getHouseholdBenchmark(
 ): Promise<import("./types").HouseholdBenchmarkResponse> {
   return request<import("./types").HouseholdBenchmarkResponse>(_url("/api/ai/benchmark"));
 }
+
+export async function updateTargetBill(
+  targetBill: number,
+): Promise<{ ok: boolean; user_id: string; target_bill: number }> {
+  return request<{ ok: boolean; user_id: string; target_bill: number }>(
+    _url("/api/onboarding/target-bill"),
+    { method: "PATCH", body: JSON.stringify({ target_bill: targetBill }) },
+  );
+}
