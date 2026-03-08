@@ -54,6 +54,13 @@ GUIDELINES:
 8. For weekly/monthly analysis, highlight the best and worst performing days/weeks and suggest why.
 9. When the user asks about challenges or points, reference their actual challenge completion history.
 10. Be encouraging — celebrate improvements ("Your Tuesday usage dropped 12% vs last week — great job!") and gently flag regressions.
+11. **USE THE USER'S LIFESTYLE PROFILE** from [USER PROFILE] for tailored recommendations:
+    - If they have a TARGET BILL, compare their projected monthly bill to it and tell them if they are on/off track. Suggest specific kWh reductions needed to meet the target.
+    - If they have WFH days, recommend shifting heavy-load appliances (washing machine, dryer, dishwasher) to WFH days when they're home to monitor usage, or suggest using off-peak hours on office days.
+    - If they have high aircon usage (level 2-3), focus tips on aircon optimisation: setting to 25°C, using fan + aircon combo, timer at night, cleaning filters monthly.
+    - If they have children or elderly, suggest age-appropriate tips (e.g. "With elderly at home, keep aircon at a comfortable 25°C rather than turning it off — pair it with a fan to save 20-30%").
+    - If they have tenants, remind that shared responsibility matters — suggest communal energy-saving agreements.
+    - If floor area is large (>90 sqm), highlight that lighting and cooling larger spaces costs more — recommend zone cooling.
 """
 
 FALLBACK_USER_ID = "aaaa0001-0000-0000-0000-000000000000"
@@ -110,7 +117,8 @@ def _build_user_context() -> str:
             SELECT toString(hd.HouseholdID) AS HouseholdID, hd.PostalCode,
                    hd.District, hd.Flat_type,
                    hu.Num_residents, hu.Aircon_usage, hu.Num_WFH,
-                   hu.Floor_area_sqm, hu.Num_Aircons, hu.Num_children, hu.Num_elderly
+                   hu.Floor_area_sqm, hu.Num_Aircons, hu.Num_children, hu.Num_elderly,
+                   hu.Num_tenants, hu.Has_WFH_days, hu.Target_bill
             FROM details_per_household hd
             LEFT JOIN input_per_household hu ON toString(hd.UserID) = hu.UserID
             WHERE toString(hd.UserID) = {uid:String} LIMIT 1
@@ -125,7 +133,8 @@ def _build_user_context() -> str:
                 SELECT toString(hd.HouseholdID) AS HouseholdID, hd.PostalCode,
                        hd.District, hd.Flat_type,
                        hu.Num_residents, hu.Aircon_usage, hu.Num_WFH,
-                       hu.Floor_area_sqm, hu.Num_Aircons, hu.Num_children, hu.Num_elderly
+                       hu.Floor_area_sqm, hu.Num_Aircons, hu.Num_children, hu.Num_elderly,
+                       hu.Num_tenants, hu.Has_WFH_days, hu.Target_bill
                 FROM details_per_household hd
                 LEFT JOIN input_per_household hu ON toString(hd.UserID) = hu.UserID
                 WHERE toString(hd.UserID) = {uid:String} LIMIT 1
@@ -138,7 +147,8 @@ def _build_user_context() -> str:
 
         (household_id, postal_code, district, flat_type,
          num_residents, aircon_usage, num_wfh,
-         floor_area, num_aircons, num_children, num_elderly) = row[0][:11]
+         floor_area, num_aircons, num_children, num_elderly,
+         num_tenants, has_wfh_days, target_bill) = row[0][:14]
 
         today = get_app_date()
         yesterday = today - timedelta(days=1)
@@ -150,13 +160,24 @@ def _build_user_context() -> str:
             return _safe(rows[0][0]) if rows else 0.0
 
         # ── 2. User profile section ───────────────────────────────────────
+        # Parse aircon usage level to human-readable
+        aircon_labels = {0: "Never", 1: "Sometimes", 2: "Every night", 3: "Whole day"}
+        aircon_label = aircon_labels.get(aircon_usage, f"level {aircon_usage}")
+
+        # Parse target bill
+        target_bill_val = _safe(target_bill, 2) if target_bill else None
+
+        # Parse WFH days list
+        wfh_days_str = str(has_wfh_days or "[]")
+
         parts.append(
             f"[USER PROFILE] HouseholdID: {household_id} | PostalCode: {postal_code} | "
             f"District: {district} | Flat: {flat_type} | "
             f"Floor area: {_safe(floor_area, 0)} sqm | "
-            f"Residents: {num_residents or '?'} (children: {num_children or 0}, elderly: {num_elderly or 0}) | "
-            f"Aircon level: {aircon_usage or 0}/5, {num_aircons or '?'} units | "
-            f"WFH: {num_wfh or 0} days/week"
+            f"Residents: {num_residents or '?'} (children: {num_children or 0}, elderly: {num_elderly or 0}, tenants: {num_tenants or 0}) | "
+            f"Aircon usage: {aircon_label} ({num_aircons or '?'} units) | "
+            f"WFH: {num_wfh or 0} days/week (days: {wfh_days_str}) | "
+            f"Target monthly bill: {'$' + str(target_bill_val) + ' SGD' if target_bill_val else 'not set'}"
         )
 
         # ── 3. Today's half-hourly breakdown ──────────────────────────────
@@ -422,7 +443,22 @@ def _build_user_context() -> str:
                 f"[CHALLENGES] Total points: {int(total_points)} | No challenges completed yet — encourage the user to try one!"
             )
 
-        # ── 13. Weekday vs Weekend pattern ────────────────────────────────
+        # ── 13. Budget tracking (if target bill is set) ───────────────────
+        if target_bill_val:
+            target_kwh_monthly = _safe(target_bill_val / 0.3168)  # reverse from tariff
+            target_kwh_daily = _safe(target_kwh_monthly / 30)
+            on_track = projected_monthly <= target_kwh_monthly
+            kwh_over_under = _safe(projected_monthly - target_kwh_monthly)
+            bill_over_under = _safe(kwh_over_under * 0.3168)
+            parts.append(
+                f"[BUDGET TARGET] Monthly target: ${target_bill_val} SGD (~{target_kwh_monthly} kWh/month, ~{target_kwh_daily} kWh/day) | "
+                f"Projected: ~{projected_monthly} kWh (~${est_bill} SGD) | "
+                f"Status: {'ON TRACK ✓' if on_track else 'OVER BUDGET ✗'} — "
+                f"{'under' if kwh_over_under <= 0 else 'over'} by {abs(kwh_over_under)} kWh (~${abs(bill_over_under)} SGD) | "
+                f"Daily avg needed to hit target: {target_kwh_daily} kWh (current: {monthly_daily_avg} kWh)"
+            )
+
+        # ── 14. Weekday vs Weekend pattern ────────────────────────────────
         weekday_vs_weekend = db.query(
             """
             SELECT
