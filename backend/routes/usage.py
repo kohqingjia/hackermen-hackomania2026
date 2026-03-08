@@ -2,8 +2,8 @@
 Usage route
 GET /api/usage/{user_id}?date=YYYY-MM-DD
   Returns half-hourly kWh for a household on a given day.
-  Looks up household_data to find the user's HouseholdID, then queries
-  household_electricity_usage for Consumption data.
+  Looks up details_per_household to find the user's HouseholdID, then queries
+  consumption_per_household for Consumption data.
 """
 
 from datetime import date, datetime

@@ -1,12 +1,13 @@
 """
 ClickHouse client and schema setup.
-Tables (from SP data):
-  - household_data                (per-household static profile)
-  - household_user_input          (user-submitted preferences)
-  - household_electricity_usage   (half-hourly consumption readings)
-App-specific tables:
-  - user_challenges   (completed challenges)
-  - user_points       (weekly points per postal code)
+Tables (electricity consumption data):
+  - consumption_per_household          (half-hourly consumption readings)
+  - consumption_per_household_daily    (daily aggregated consumption)
+  - consumption_per_household_monthly  (monthly aggregated consumption)
+  - consumption_per_household_weekly   (weekly aggregated consumption)
+Tables (household metadata):
+  - details_per_household     (static household profile)
+  - input_per_household       (user-submitted preferences)
 """
 
 import clickhouse_connect
@@ -39,19 +40,47 @@ def get_client():
 CREATE_DATABASE_SQL = f"CREATE DATABASE IF NOT EXISTS {settings.clickhouse_database}"
 
 SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS household_data (
+CREATE TABLE IF NOT EXISTS consumption_per_household (
+    HouseholdID     String,
+    Timestamp       DateTime,
+    Consumption     Float32
+) ENGINE = MergeTree()
+ORDER BY (HouseholdID, Timestamp);
+
+CREATE TABLE IF NOT EXISTS consumption_per_household_daily (
+    HouseholdID     String,
+    Day             Date,
+    Consumption     Float32
+) ENGINE = MergeTree()
+ORDER BY (HouseholdID, Day);
+
+CREATE TABLE IF NOT EXISTS consumption_per_household_monthly (
+    HouseholdID     String,
+    MonthStart      Date,
+    Consumption     Float32
+) ENGINE = MergeTree()
+ORDER BY (HouseholdID, MonthStart);
+
+CREATE TABLE IF NOT EXISTS consumption_per_household_weekly (
+    HouseholdID     String,
+    WeekStart       Date,
+    Consumption     Float32
+) ENGINE = MergeTree()
+ORDER BY (HouseholdID, WeekStart);
+
+CREATE TABLE IF NOT EXISTS details_per_household (
     UserID          String,
     HouseholdID     String,
     Area            String,
     Region          String,
     District        String,
-    Postal_Code     String,
+    PostalCode      String,
     Dwelling_type   String DEFAULT 'HDB',
     Flat_type       String
 ) ENGINE = MergeTree()
 ORDER BY (UserID, HouseholdID);
 
-CREATE TABLE IF NOT EXISTS household_user_input (
+CREATE TABLE IF NOT EXISTS input_per_household (
     UserID          String,
     HouseholdID     String,
     Floor_area_sqm  Float32 DEFAULT 0,
@@ -65,30 +94,6 @@ CREATE TABLE IF NOT EXISTS household_user_input (
     Num_WFH         UInt8 DEFAULT 0
 ) ENGINE = MergeTree()
 ORDER BY (UserID, HouseholdID);
-
-CREATE TABLE IF NOT EXISTS household_electricity_usage (
-    HouseholdID     String,
-    Timestamp       DateTime,
-    Consumption     Float32
-) ENGINE = MergeTree()
-ORDER BY (HouseholdID, Timestamp);
-
-CREATE TABLE IF NOT EXISTS user_challenges (
-    user_id        String,
-    challenge_id   String,
-    completed_at   DateTime DEFAULT now(),
-    photo_url      String DEFAULT '',
-    points_earned  Int32
-) ENGINE = MergeTree()
-ORDER BY (user_id, completed_at);
-
-CREATE TABLE IF NOT EXISTS user_points (
-    user_id      String,
-    postal_code  String,
-    points       Int32,
-    week_start   Date
-) ENGINE = MergeTree()
-ORDER BY (postal_code, week_start, user_id);
 """
 
 

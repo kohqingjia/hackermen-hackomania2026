@@ -475,13 +475,21 @@ POST /v1/chat/completions     # OpenAI-compatible endpoint (used by LibreChat)
 
 ### Database Tables (ClickHouse)
 
-| Table | Description |
-|---|---|
-| `household_data` | Static household profile (area, district, postal code, dwelling type) |
-| `household_user_input` | User preferences (floor area, residents, aircon usage, WFH days) |
-| `household_electricity_usage` | Half-hourly consumption readings (HouseholdID, Timestamp, kWh) |
-| `user_challenges` | Completed gamification challenges (user, challenge, points, photo) |
-| `user_points` | Weekly GreenUP points per user per block |
+**Consumption Data (time-series):**
+
+| Table | Columns | Description |
+|---|---|---|
+| `consumption_per_household` | HouseholdID, Timestamp, Consumption(kWh) | Half-hourly consumption readings |
+| `consumption_per_household_daily` | HouseholdID, Day, Consumption(kWh) | Daily aggregated consumption |
+| `consumption_per_household_monthly` | HouseholdID, MonthStart, Consumption(kWh) | Monthly aggregated consumption |
+| `consumption_per_household_weekly` | HouseholdID, WeekStart, Consumption(kWh) | Weekly aggregated consumption |
+
+**Household Metadata:**
+
+| Table | Columns | Description |
+|---|---|---|
+| `details_per_household` | UserID, HouseholdID, Area, Region, District, PostalCode, Dwelling_type, Flat_type | Static household profile |
+| `input_per_household` | UserID, HouseholdID, Floor_area_sqm, Num_residents, Num_children, Num_elderly, Num_tenants, Aircon_usage, Num_Aircons, Has_WFH_days, Num_WFH | User preferences and household composition |
 
 ---
 
