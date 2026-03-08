@@ -8,9 +8,9 @@ interface LeaderboardListProps {
 }
 
 const RANK_POINTS_LABEL: Record<number, { label: string; bg: string; text: string }> = {
-  1: { label: "+100 pts", bg: "bg-yellow-50", text: "text-yellow-700" },
-  2: { label: "+80 pts",  bg: "bg-gray-50",   text: "text-gray-600" },
-  3: { label: "+25 pts",  bg: "bg-orange-50", text: "text-orange-600" },
+  1: { label: "+100 🍃", bg: "bg-yellow-50", text: "text-yellow-700" },
+  2: { label: "+80 🍃",  bg: "bg-gray-50",   text: "text-gray-600" },
+  3: { label: "+25 🍃",  bg: "bg-orange-50", text: "text-orange-600" },
 };
 
 const MEDALS = ["🥇", "🥈", "🥉"];

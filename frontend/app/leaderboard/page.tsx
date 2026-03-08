@@ -98,14 +98,14 @@ export default function LeaderboardPage() {
         <p className="text-m font-semibold opacity-80 mb-2">Weekly Points</p>
         <div className="flex justify-around">
           {[
-            { rank: "1st", pts: "100 pts", emoji: "🥇" },
-            { rank: "2nd", pts: "80 pts",  emoji: "🥈" },
-            { rank: "3rd", pts: "25 pts",  emoji: "🥉" },
-          ].map(({ rank, pts, emoji }) => (
+            { rank: "1st", points: "100", emoji: "🥇" },
+            { rank: "2nd", points: "80",  emoji: "🥈" },
+            { rank: "3rd", points: "25",  emoji: "🥉" },
+          ].map(({ rank, points, emoji }) => (
             <div key={rank} className="text-center">
               <p className="text-lg">{emoji}</p>
               <p className="text-s font-bold">{rank}</p>
-              <p className="text-[10px] opacity-80">+{pts}</p>
+              <p className="text-[10px] opacity-80 inline-flex items-center gap-1 justify-center">+{points} 🍃</p>
             </div>
           ))}
         </div>
